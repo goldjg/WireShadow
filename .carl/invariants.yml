@@ -1,0 +1,13 @@
+invariants:
+  - id: redact-by-default
+    rule: Classify and redact sensitive values by default.
+    severity: critical
+  - id: no-full-secret-retention
+    rule: Never retain full secret values; retain only category, length, hash, and minimal evidence.
+    severity: critical
+  - id: no-offensive-behavior
+    rule: Do not implement credential theft, bypass, offensive automation, malware behavior, or exfiltration functionality.
+    severity: critical
+  - id: delegated-execution-visibility
+    rule: Preserve delegated-execution observability semantics in Lite instrumentation and recognisers.
+    severity: high

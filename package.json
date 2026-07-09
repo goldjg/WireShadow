@@ -1,0 +1,24 @@
+{
+  "name": "wireshadow",
+  "version": "1.0.0",
+  "description": "WireShadow browser-side delegated execution observability toolkit",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "security",
+    "browser",
+    "mv3",
+    "spade"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

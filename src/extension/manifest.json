@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "WireShadow Lite",
+  "description": "Browser-side observability for delegated execution and hidden egress indicators.",
+  "version": "0.1.0",
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-world.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": {
+    "default_title": "WireShadow Lite",
+    "default_popup": "panel/index.html"
+  }
+}

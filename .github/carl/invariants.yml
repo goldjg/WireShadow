@@ -1,0 +1,36 @@
+# version: 1.0.0
+invariants:
+  - id: no-hardcoded-secrets
+    name: No hardcoded secrets
+    rule: Secrets, tokens, and credentials must not be committed.
+    severity: critical
+
+  - id: redact-by-default
+    name: Redaction by default
+    rule: Potentially sensitive values must be classified and redacted before retention or reporting.
+    severity: critical
+
+  - id: no-secret-retention
+    name: No full secret retention
+    rule: Full secret payloads are forbidden; only minimal safe evidence (category, length, hash) may be retained.
+    severity: critical
+
+  - id: no-exfiltration-features
+    name: No exfiltration functionality
+    rule: WireShadow bootstrap must not implement offensive automation, credential theft, malware behavior, or data exfiltration.
+    severity: critical
+
+  - id: delegated-execution-observability
+    name: Delegated execution observability
+    rule: The MVP must preserve semantic observability of delegated execution intent at browser boundary.
+    severity: high
+
+  - id: keep-bootstrap-lightweight
+    name: Lightweight bootstrap scope
+    rule: Initial PR must remain a small foundation and avoid broad platform or infrastructure expansion.
+    severity: high
+
+  - id: pr-contract-respected
+    name: PR contract respected
+    rule: Implementation must stay within the current PR contract scope.
+    severity: high

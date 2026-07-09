@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>WireShadow Lite</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+        width: 760px;
+        max-height: 600px;
+        overflow: auto;
+      }
+      main {
+        padding: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #ddd;
+        padding: 6px 4px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        background: #fff;
+      }
+      .muted {
+        color: #666;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px;
+        margin-bottom: 10px;
+      }
+      .chip {
+        display: inline-block;
+        border: 1px solid #aaa;
+        border-radius: 999px;
+        padding: 2px 8px;
+        margin: 2px 4px 2px 0;
+      }
+      ol {
+        margin: 4px 0;
+        padding-left: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>WireShadow Lite</h1>
+      <p class="muted">Passive delegated-execution observability stream (newest first).</p>
+
+      <section id="semantic-overview" class="card"></section>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>API</th>
+            <th>Destination</th>
+            <th>Classification</th>
+            <th>Risk flags</th>
+            <th>Current page</th>
+          </tr>
+        </thead>
+        <tbody id="events-body"></tbody>
+      </table>
+    </main>
+    <script>
+      const getRuntime = () => globalThis.chrome && globalThis.chrome.runtime;
+      const escapeHtml = (value) =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+
+      const renderOverview = (event) => {
+        const container = document.getElementById("semantic-overview");
+        if (!container) return;
+        if (!event) {
+          container.innerHTML = '<span class="muted">No semantic recogniser output yet.</span>';
+          return;
+        }
+
+        const recogniser = event.recogniserFindings?.[0]?.recogniserId ?? "none";
+        const riskScore = event.riskScore?.total ?? 0;
+        const capabilities = event.detectedCapabilities ?? [];
+        const crossings = event.trustBoundaryCrossings ?? [];
+        const timeline = event.timeline ?? [];
+        const factors = (event.riskScore?.factors ?? [])
+          .filter((factor) => factor.detected)
+          .map((factor) => `<li>${escapeHtml(factor.title)} (+${factor.score})</li>`)
+          .join("");
+
+        container.innerHTML = `
+          <div><strong>Current recogniser:</strong> ${escapeHtml(recogniser)}</div>
+          <div><strong>Risk score:</strong> ${riskScore}</div>
+          <div><strong>Detected capabilities:</strong> ${
+            capabilities.length
+              ? capabilities.map((value) => `<span class="chip">${escapeHtml(value)}</span>`).join("")
+              : '<span class="muted">none</span>'
+          }</div>
+          <div><strong>Trust boundary crossings:</strong> ${
+            crossings.length
+              ? crossings.map((value) => `<span class="chip">${escapeHtml(value)}</span>`).join("")
+              : '<span class="muted">none</span>'
+          }</div>
+          <div><strong>Timeline:</strong> ${
+            timeline.length
+              ? `<ol>${timeline
+                  .map(
+                    (item) =>
+                      `<li><strong>${escapeHtml(item.title)}</strong> — ${escapeHtml(item.details)}</li>`
+                  )
+                  .join("")}</ol>`
+              : '<span class="muted">none</span>'
+          }</div>
+          <div><strong>Score factors:</strong> ${
+            factors ? `<ul>${factors}</ul>` : '<span class="muted">none</span>'
+          }</div>
+        `;
+      };
+
+      const render = (events) => {
+        const body = document.getElementById("events-body");
+        if (!body) return;
+        if (!Array.isArray(events) || events.length === 0) {
+          renderOverview(undefined);
+          body.innerHTML = '<tr><td colspan="6" class="muted">No events observed yet.</td></tr>';
+          return;
+        }
+
+        renderOverview(events[0]);
+        body.innerHTML = events
+          .map(
+            (event) => `
+              <tr>
+                <td>${escapeHtml(new Date(event.observedAt).toLocaleTimeString())}</td>
+                <td>${escapeHtml(event.api)}</td>
+                <td>${escapeHtml(event.destination?.host ?? "unknown")}</td>
+                <td>${escapeHtml((event.classification?.categories ?? []).join(", ") || "unknown")}</td>
+                <td>${escapeHtml((event.riskFlags ?? []).join(", ") || "-")}</td>
+                <td>${escapeHtml(event.context?.url ?? "-")}</td>
+              </tr>
+            `
+          )
+          .join("");
+      };
+
+      const refresh = () => {
+        const runtime = getRuntime();
+        if (!runtime?.sendMessage) return;
+        runtime.sendMessage({ type: "wireshadow-panel-get-events" }, (response) => {
+          render(response?.payload?.events ?? []);
+        });
+      };
+
+      refresh();
+      setInterval(refresh, 1500);
+    </script>
+  </body>
+</html>

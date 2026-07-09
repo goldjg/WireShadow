@@ -1,0 +1,26 @@
+{
+  "_note": "WireShadow mirror repo map. Canonical generated map is .github/carl/repo-map.json.",
+  "generated_from": ".github/carl/repo-map.json",
+  "last_updated": "2026-07-09",
+  "product": "WireShadow",
+  "mvp": "Chromium MV3 extension with passive Colab delegated-execution semantic observability",
+  "languages": ["JavaScript", "TypeScript"],
+  "entry_points": ["package.json"],
+  "core_directories": [
+    "src/extension",
+    "src/core",
+    "src/recognisers",
+    "tests"
+  ],
+  "pipeline_components": [
+    "src/core/semantic.ts",
+    "src/extension/page-world.ts",
+    "src/extension/content-script.ts",
+    "src/extension/background.ts",
+    "src/extension/event-store.ts",
+    "src/extension/contracts.ts",
+    "src/extension/panel/index.html"
+  ],
+  "governance_directories": [".github/carl", ".carl"],
+  "documentation_files": ["README.md", "AGENTS.md", "CLAUDE.md"]
+}
