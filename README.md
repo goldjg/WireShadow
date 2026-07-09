@@ -111,6 +111,27 @@ Popup panel (current PR)
 DevTools panel (future PR)
 ```
 
+## Playwright UI screenshots
+
+The screenshots below are generated with a Playwright-driven mock runtime response so the popup renders deterministic semantic states.
+
+### 1. Empty stream baseline
+
+![WireShadow panel empty state](./docs/screenshots/panel-empty-state.png)
+
+This view documents the passive baseline before any observed events: no recogniser output, no timeline, and no risk factors.
+
+### 2. Colab delegated-execution signal state
+
+![WireShadow panel Colab signal state](./docs/screenshots/panel-colab-signal.png)
+
+This view demonstrates the intended operator-facing explanation path:
+
+- recogniser identity and additive risk score
+- detected capability chips and trust-boundary crossings
+- timeline steps that explain browser intent vs delegated runtime risk
+- explicit score factors used to keep the output deterministic and reviewable
+
 ## Current limitations
 
 - in-memory storage only (no persistence/export)
