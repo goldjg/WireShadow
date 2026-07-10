@@ -26,13 +26,35 @@ interface ChromeLike {
 const getChromeRuntime = (): ChromeLikeRuntime | undefined =>
   (globalThis as { chrome?: ChromeLike }).chrome?.runtime;
 
+// Once the extension is reloaded while this content script is still running the
+// runtime context is invalidated.  chrome.runtime.sendMessage then throws even
+// though runtime and sendMessage are non-null.  Track this and bail out early
+// rather than letting the error surface as an uncaught exception.
+let extensionContextInvalidated = false;
+let messageListenerCleanup: (() => void) | undefined;
+
+const safeSendMessage = (
+  message: RuntimeObservedEventMessage | RuntimeWebSocketFrameMessage | RuntimeContentStatusMessage
+): void => {
+  if (extensionContextInvalidated) return;
+  try {
+    getChromeRuntime()?.sendMessage?.(message);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Extension context invalidated")) {
+      extensionContextInvalidated = true;
+      messageListenerCleanup?.();
+      return;
+    }
+    throw error;
+  }
+};
+
 const PAGE_WORLD_MARKER = "data-wireshadow-page-world";
 const PAGE_WORLD_SCRIPT_ID = "wireshadow-page-world-script";
 const CONTENT_BRIDGE_READY = "__wireshadow_content_bridge_ready";
 
 const sendContentStatus = (payload: RuntimeContentStatusMessage["payload"]): void => {
-  const runtime = getChromeRuntime();
-  runtime?.sendMessage?.(toRuntimeContentStatusMessage(payload));
+  safeSendMessage(toRuntimeContentStatusMessage(payload));
 };
 
 const injectPageWorldScript = (): void => {
@@ -109,7 +131,7 @@ const forwardMetadata = (): void => {
     pageUrl: window.location.href
   });
 
-  window.addEventListener("message", (event: MessageEvent) => {
+  const onMessage = (event: MessageEvent): void => {
     if (event.source !== window) {
       return;
     }
@@ -129,16 +151,17 @@ const forwardMetadata = (): void => {
       if (!isPageWorldWebSocketFrameMessage(event.data)) {
         return;
       }
-      const runtime = getChromeRuntime();
       console.info("[WireShadow] observed event forwarded");
-      runtime?.sendMessage?.(toRuntimeWebSocketFrameMessage(event.data));
+      safeSendMessage(toRuntimeWebSocketFrameMessage(event.data));
       return;
     }
 
-    const runtime = getChromeRuntime();
     console.info("[WireShadow] observed event forwarded");
-    runtime?.sendMessage?.(toRuntimeObservedEventMessage(event.data));
-  });
+    safeSendMessage(toRuntimeObservedEventMessage(event.data));
+  };
+
+  window.addEventListener("message", onMessage);
+  messageListenerCleanup = () => window.removeEventListener("message", onMessage);
 };
 
 forwardMetadata();
