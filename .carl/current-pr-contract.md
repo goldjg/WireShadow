@@ -1,7 +1,7 @@
 # WireShadow Colab Semantic Recogniser PR Contract
 
 ## Goal
-Implement the first semantic recogniser for Google Colab to surface delegated execution risk, trust-boundary crossings, timeline evidence, and deterministic scoring without parsing notebooks or interfering with execution.
+Implement session-scoped semantic correlation for delegated execution so WireShadow can correlate non-empty Colab/Jupyter execute_request calls with previously observed symbol capabilities and argument provenance, then produce evidence-scoped risk and trust-boundary findings without storing raw notebook code.
 
 ## Contract status
 active
@@ -21,6 +21,8 @@ active
 - Add WebSocket outbound frame observation with typed message variants and bounded frame metadata.
 - Add Jupyter protocol recognition for kernel `execute_request` semantics and LSP edit-only signals.
 - Treat Drive multipart autosave as secondary evidence, not execution trigger.
+- Replace TypeScript-only extension emit with a bundling-based build that generates manifest-compatible runtime artifacts.
+- Add a built-output extension smoke test that validates bridge readiness and end-to-end event flow.
 - Include all-frame content script execution support for child-frame network activity.
 - Recognise Colab page, notebook document indicators, notebook cell edits, notebook execution, executable Python cell creation, Markdown cell creation, and notebook metadata hints.
 - Expand semantic classifier patterns for Python networking, external execution, GitHub, cloud storage, HTTP method intent, embedded blobs/base64, and secret-like markers.
@@ -29,6 +31,10 @@ active
 - Add lightweight additive risk scoring with explicit contributing factors.
 - Extend popup to display recogniser, timeline, score, detected capabilities, and trust-boundary crossings.
 - Add focused tests for recogniser behavior, timeline/scoring, delegated execution event generation, redaction guarantees, and integration.
+- Add session-scoped semantic state correlation across notebook executions (imports, function definitions, assignments, calls, argument provenance).
+- Add explicit evidence levels (observed/correlated/inferred/unknown) to semantic findings.
+- Correlate later symbol invocation with prior function capabilities and destination metadata.
+- Keep generic correlation logic in shared core semantic analysis; keep Colab recogniser platform-specific.
 - Update README and required cARL mirrors (`.carl/current-pr-contract.md`, `.carl/repo-map.json`, `.carl/memory.md`).
 
 ## Forbidden scope
@@ -77,5 +83,34 @@ active
 ## Field root cause and evidence
 - Root cause: `src/extension/content-script.ts` removed injected `page-world.js` immediately after append, risking cancellation before async external script execution.
 - HAR-derived protocol finding: Colab execution requests are observed over kernel channel WebSocket frames (`/api/kernels/<id>/channels`) and notebook-edit signals over Colab LSP WebSocket frames (`/colab/lsp`); Drive autosave PUT bodies are secondary evidence only.
-- Evidence: `npm run build` passes with deterministic extension bundle output; `npm test` is blocked by local Node runtime mismatch for Vitest startup (`node:util styleText` export); `carl` commands are blocked because CLI is unavailable in this environment.
-- Remaining Colab limitation: live interactive Colab validation and frame-aware de-duplication heuristics remain future hardening work.
+- Live-frame protocol shape finding: outbound kernel frames may arrive as direct JSON, array-wrapped payloads, nested envelopes, stringified nested JSON, and prefixed transport frames before the JSON payload.
+- WebSocket semantic extraction is now bounded and protocol-aware (direct/nested/array/stringified/prefixed JSON plus frame-encoding metadata), and only non-empty `execute_request.content.code` contributes execution semantics.
+- Empty `execute_request` messages now remain protocol-only observations: they increment protocol counters, do not overwrite the latest meaningful execution event, do not generate delegated execution findings, and do not contribute risk score.
+- Risk flags are now evidence-gated: `delegated-execution`/`code-execution` require non-empty execution, `hidden-egress` requires outbound capability in executed code, `embedded-data` requires embedded-data detection, and `sensitive-pattern` requires concrete sensitive classifier categories.
+- Runtime transport metadata exclusions were added so routine Colab runtime host/session/kernel/notebook identifiers are not treated as user-secret exposure.
+- Correlation root cause: single execute_request inspection missed distributed notebook meaning where outbound capabilities are defined in earlier cells and invoked later.
+- Correlation fix: added bounded session-scoped semantic state keyed by hashed runtime context (tab/notebook/kernel), tracking imports, aliases, functions, assignments, and calls with expiry and bounded symbol limits.
+- Additional correlation root cause: semantic context keys included frame IDs, fragmenting same tab/kernel/notebook semantics across frames.
+- Additional correlation root cause: call parsing only matched line-start call shapes and missed assignment-wrapped multiline invocations.
+- Additional correlation fix: semantic context key now normalizes to tab+kernel+notebook hash (frame-agnostic), and call parser now supports assignment-wrapped multiline call shapes.
+- Additional diagnostics: execution metadata now captures statement kinds, semantic-store size before/after, resolution result, and redacted failure taxonomy without raw code retention.
+- New ingestion root cause: semantic analysis path depended on truncated WebSocket payload samples, so larger valid execute_request envelopes could fail parse and skip definition/assignment state ingestion.
+- New ingestion fix: protocol-aware parsing now uses complete bounded frame text first; display sample truncation is telemetry-only and no longer semantic input.
+- New limits: bounded frame parse size, bounded code-analysis size, bounded nested decode/parser traversal, and bounded semantic-fact emission counters.
+- Function-definition root cause: generic parser matching was limited to single-line `def ...(...):` headers, so decorated/multiline function signatures were not persisted as symbols.
+- Function-definition fix: generic parser now supports decorated and multiline `def`/`async def` signatures and records deterministic function-store insertion diagnostics.
+- Evidence model added for semantic reporting: observed, correlated, inferred, and unknown.
+- Correlated execution findings now include known symbol invoked, inherited capabilities, argument provenance, and explicit downstream activity status `unknown`.
+- Generic/shared logic extracted into core semantic layer (`python-semantic`) so service-specific recogniser logic remains platform attribution only.
+- Build-system root cause: MV3 content scripts cannot execute unresolved ESM imports, and `tsc` emit left top-level `import` statements in `content-script.js`, causing extension startup failure.
+- Build-system change: `npm run build` now runs `tsc --noEmit` + esbuild bundling (`scripts/build-extension.mjs`) and emits unpacked extension runtime to `dist/extension`.
+- Popup root cause: MV3 extension pages block inline JavaScript by default CSP, so popup logic embedded in `panel/index.html` did not execute.
+- Popup build change: popup logic moved to `src/extension/panel/panel.ts`, bundled to `dist/extension/panel/panel.js`, and loaded via external `<script src="./panel.js"></script>`.
+- Smoke-test evidence: built-output Playwright extension smoke test updated to use `dist/extension`, validate bridge readiness handshake, trigger fetch, and verify background store ingestion while failing on page/console errors (opt-in via `WIRESHADOW_E2E=1`).
+- Validation evidence: `npm run build` passed in-session; `npm test` remains blocked by local Node/Vitest runtime mismatch (`node:util styleText` export); `carl` commands remain blocked because `carl` CLI is unavailable here.
+- Manual Colab validation status: not executed in this environment (requires local interactive browser session with extension reload).
+- Function-model drop root cause: in `background.ts`, `knownFunctionsCount`, `knownVariablesCount`, `knownSymbolsCount`, `latestFunctionDefined`, and `latestFunctionInvoked` were updated unconditionally on every WebSocket frame using `semanticExecution?.diagnostics... ?? 0`. Non-execution frames (heartbeats, kernel-status, LSP signals) have `semanticExecution = undefined`, causing these fields to reset to 0/undefined on every background frame arriving after a definition cell. This explained: FunctionDef nodes found: 3, Known functions: 0.
+- Function-model drop fix: all five fields now update only inside the `if (semanticExecution)` guard; non-execution frames leave state unchanged.
+- Cumulative function pipeline counters added: `functionExtractionAttempted/Succeeded/Failed`, `functionStoreInsertionAttemptedCount/SucceededCount/FailedCount`, `functionDroppedCount` in `SemanticExecutionSummary.diagnostics`, `TabObserverState`, and `ObserverDiagnostics`; wired through to popup display.
+- `FunctionAnalysisFailureReason` taxonomy expanded to 21 variants matching full brief specification.
+- 27 new test cases added for function-model invariants and regression coverage including zero-capabilities persistence, async/decorated/multiline/variadic forms, body-content variants, nested-function handling, store insertion accounting, redefinition semantics, symbol key stability, assignment-wrapped call resolution, capability inheritance, raw-body non-retention, and the primary regression (3 FunctionDef nodes → 3 store insertions → knownFunctionsCount = 3).

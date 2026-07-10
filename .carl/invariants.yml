@@ -11,3 +11,7 @@ invariants:
   - id: delegated-execution-visibility
     rule: Preserve delegated-execution observability semantics in Lite instrumentation and recognisers.
     severity: high
+
+  - id: promote-generic-recogniser-logic
+    rule: Service-specific recognisers must promote reusable protocol, semantic, capability, correlation, and trust-boundary logic into shared generic analysis layers unless demonstrably service-specific.
+    severity: high

@@ -4,7 +4,9 @@
   "description": "WireShadow browser-side delegated execution observability toolkit",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/prepare-extension.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build:extension": "node scripts/build-extension.mjs",
+    "build": "npm run typecheck && npm run build:extension",
     "test": "vitest run",
     "test:watch": "vitest",
     "screenshots": "node scripts/generate-screenshots.mjs"
@@ -19,6 +21,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "esbuild": "^0.28.1",
     "playwright": "^1.56.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"

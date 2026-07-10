@@ -25,6 +25,25 @@ WireShadow now includes a first Colab semantic recogniser that emits:
 
 Colab execution intent is primarily recognised from outbound Jupyter WebSocket `execute_request` frames (kernel channels), while Colab LSP WebSocket messages are treated as notebook-content/edit signals only.
 
+WireShadow now also performs **session-scoped semantic correlation** because notebook meaning can be distributed across time (for example: function defined in one cell, invoked in a later cell). The semantic layer correlates:
+
+- symbols defined earlier (imports, aliases, function definitions, assignments)
+- symbols invoked now
+- argument provenance (token-like, embedded-data, repository/path classes)
+- inherited capability classes and destination classes
+- function-definition metadata across single-line, decorated, and multiline signatures (`def` / `async def`)
+
+All retained semantic state is bounded, expiring, and key-scoped with hashed runtime context identifiers (tab + notebook + kernel).
+
+WebSocket processing order is now explicitly split:
+
+1. complete bounded frame decode/parsing for semantic analysis
+2. immediate semantic extraction/redaction
+3. raw frame/code discard
+4. separate truncated display sample for low-level telemetry UI
+
+Display truncation does not drive semantic analysis.
+
 ## SPADE origin and Colab poster-child scenario
 
 SPADE means **Side-channel Platform Abuse and Data Exfiltration**.
@@ -48,6 +67,9 @@ The recogniser emits a generic `DelegatedExecutionEvent` containing:
 - outbound capability detected
 - embedded data detected
 - trust boundary crossed
+- downstream activity observed (`unknown` in Lite mode)
+- known symbol invoked (when correlated)
+- inherited capabilities (when correlated)
 
 This model is intentionally generic for future recognisers.
 
@@ -63,6 +85,31 @@ WireShadow builds structured timeline steps from deterministic recogniser signal
 6. potential downstream network activity outside browser visibility
 
 No AI summarisation is used in this phase.
+
+## Evidence levels and semantic correlation
+
+WireShadow Lite reports semantic evidence using explicit levels:
+
+- `observed` (directly seen browser/protocol signal)
+- `correlated` (resolved from prior observed semantic state)
+- `inferred` (runtime potential based on correlated capabilities)
+- `unknown` (not directly observable in Lite mode)
+
+Example:
+
+1. observed: Jupyter execute_request
+2. correlated: earlier function definition resolved at call site
+3. correlated: token-like / embedded-data argument supplied
+4. inferred: managed runtime may perform outbound write
+5. unknown: downstream request success
+
+WireShadow Lite can infer delegated egress potential from browser-observed protocol and code semantics, but it does **not** claim direct observation of managed-runtime downstream network traffic.
+
+## Generic vs service-specific recognisers
+
+Reusable logic (Python import/definition/assignment/call analysis, symbol capability mapping, argument provenance, correlation, evidence modeling) lives in shared core semantic layers.
+
+Service-specific recognisers (for example Colab) retain only platform attribution and protocol-specific transport quirks.
 
 ## Lite vs Pro
 
@@ -158,6 +205,8 @@ npm install
 npm run build
 npm test
 ```
+
+`npm run build` now performs TypeScript type-checking (`--noEmit`) and bundles extension runtime entry points via esbuild into a self-contained unpacked extension at `dist/extension`.
 
 Browser-level extension pipeline integration test (optional, requires local browser runtime support):
 

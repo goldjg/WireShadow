@@ -34,3 +34,8 @@ invariants:
     name: PR contract respected
     rule: Implementation must stay within the current PR contract scope.
     severity: high
+
+  - id: promote-generic-recogniser-logic
+    name: Promote reusable recogniser logic
+    rule: Service-specific recognisers must promote reusable protocol, semantic, capability, correlation, and trust-boundary logic into shared generic analysis layers unless demonstrably service-specific.
+    severity: high

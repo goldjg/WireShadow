@@ -111,6 +111,16 @@ export interface DelegatedExecutionEvent {
   outboundCapabilityDetected: boolean;
   embeddedDataDetected: boolean;
   trustBoundaryCrossed: boolean;
+  downstreamActivityObserved?: "unknown" | "observed";
+  knownSymbolInvoked?: string;
+  inheritedCapabilities?: string[];
+}
+
+export type EvidenceLevel = "observed" | "correlated" | "inferred" | "unknown";
+
+export interface SemanticEvidence {
+  level: EvidenceLevel;
+  detail: string;
 }
 
 export interface TrustBoundaryTimelineEvent {
@@ -145,6 +155,7 @@ export interface ObservedEvent {
   recogniserFindings: RecogniserFinding[];
   trustBoundaryEvents: TrustBoundaryEvent[];
   delegatedExecutionEvent?: DelegatedExecutionEvent;
+  evidenceSummary?: SemanticEvidence[];
   timeline: TrustBoundaryTimelineEvent[];
   riskScore?: RiskScore;
   detectedCapabilities: string[];
@@ -178,6 +189,11 @@ export interface PageWorldWebSocketFramePayload {
   frameType: WebSocketFrameType;
   frameByteLength: number;
   payloadSample?: string;
+  payloadSampleLength?: number;
+  payloadSampleTruncated?: boolean;
+  analysisFrameText?: string;
+  analysisFrameTextLength?: number;
+  analysisEligibilityFailureReason?: string;
   initiatorLocation?: string;
 }
 
@@ -233,7 +249,58 @@ export interface ObserverDiagnostics {
   websocketOutboundFramesObserved: number;
   jupyterExecutionRequestsObserved: number;
   recogniserState: "active" | "inactive";
+  latestProtocolEvent?: string;
+  latestMeaningfulExecutionEvent?: string;
   lastSemanticEvent?: string;
+  knownSymbolsCount?: number;
+  knownFunctionsCount?: number;
+  knownVariablesCount?: number;
+  currentSemanticSessionHash?: string;
+  latestFunctionDefined?: string;
+  latestFunctionInvoked?: string;
+  latestResolutionResult?: "resolved" | "failed" | "none";
+  latestResolutionFailureReason?: string;
+  lastStateResetReason?: string;
+  totalWebSocketFramesObserved?: number;
+  textWebSocketFramesObserved?: number;
+  binaryWebSocketFramesObserved?: number;
+  latestFrameByteLength?: number;
+  latestDisplaySampleLength?: number;
+  latestDisplaySampleTruncated?: boolean;
+  displaySamplesTruncatedCount?: number;
+  jupyterParseSuccesses?: number;
+  jupyterParseFailures?: number;
+  codeExtractionAttempts?: number;
+  codeExtractionSuccesses?: number;
+  codeExtractionFailures?: number;
+  astAnalysisAttempts?: number;
+  astAnalysisSuccesses?: number;
+  astAnalysisFailures?: number;
+  importsDiscovered?: number;
+  functionsDiscovered?: number;
+  assignmentsDiscovered?: number;
+  callsDiscovered?: number;
+  semanticFactsEmitted?: number;
+  latestAnalysisFailureReason?: string;
+  functionDefNodesFound?: number;
+  asyncFunctionDefNodesFound?: number;
+  latestFunctionNameHash?: string;
+  latestFunctionParameterCount?: number;
+  latestFunctionDecoratorCount?: number;
+  latestFunctionBodyStatementCount?: number;
+  latestFunctionNestedCount?: number;
+  latestFunctionCapabilityCount?: number;
+  latestFunctionSemanticFactEmitted?: boolean;
+  functionStoreInsertionAttempted?: boolean;
+  functionStoreInsertionSucceeded?: boolean;
+  functionStoreInsertionFailureReason?: string;
+  // cumulative function pipeline counters
+  functionExtractionAttempted?: number;
+  functionExtractionSucceeded?: number;
+  functionExtractionFailed?: number;
+  functionStoreInsertionSucceededCount?: number;
+  functionStoreInsertionFailedCount?: number;
+  functionDroppedCount?: number;
 }
 
 export interface PanelEventsMessage {

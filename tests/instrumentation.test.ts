@@ -105,4 +105,47 @@ describe("instrumentation helpers", () => {
     expect(frameMessages[0].payload.frameType).toBe("text");
     expect(frameMessages[1].payload.frameType).toBe("typed-array");
   });
+
+  it("keeps full analysis frame text while truncating display sample", async () => {
+    const postMessage = vi.fn();
+    class FakeXMLHttpRequest {
+      open(): void {}
+      send(): void {}
+    }
+    class FakeWebSocket {
+      url: string;
+      constructor(url: string | URL) {
+        this.url = url.toString();
+      }
+      send(_data: unknown): void {}
+    }
+
+    vi.stubGlobal("XMLHttpRequest", FakeXMLHttpRequest);
+    vi.stubGlobal("window", {
+      location: { href: "https://colab.research.google.com/drive/sanitized", origin: "https://colab.research.google.com" },
+      fetch: vi.fn(),
+      postMessage,
+      navigator: {},
+      WebSocket: FakeWebSocket
+    });
+    vi.stubGlobal("document", {});
+
+    const { installPageWorldProbes } = await import("../src/extension/page-world.js");
+    expect(installPageWorldProbes()).toBe(true);
+
+    const largeCode = `{"header":{"msg_type":"execute_request"},"content":{"code":"${"A".repeat(7000)}"}}`;
+    const socket = new (window as unknown as { WebSocket: typeof FakeWebSocket }).WebSocket(
+      "wss://runtime-sanitized.prod.colab.dev/api/kernels/sanitized-kernel/channels"
+    );
+    socket.send(largeCode);
+
+    const frameMessage = postMessage.mock.calls
+      .map(([message]) => message)
+      .find((message) => message && typeof message === "object" && message.type === "wireshadow-websocket-frame");
+
+    expect(frameMessage).toBeDefined();
+    expect(frameMessage.payload.payloadSampleTruncated).toBe(true);
+    expect(frameMessage.payload.payloadSampleLength).toBeLessThan(frameMessage.payload.analysisFrameTextLength);
+    expect(frameMessage.payload.analysisFrameTextLength).toBe(largeCode.length);
+  });
 });

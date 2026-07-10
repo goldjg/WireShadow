@@ -7,6 +7,7 @@ import type {
 } from "../core/types.js";
 
 const MAX_SAMPLE_LEN = 2048;
+const MAX_ANALYSIS_FRAME_BYTES = 256 * 1024;
 const XHR_META = Symbol("wireshadow-xhr-meta");
 const WIRESHADOW_PATCHED = "__wireshadow_patched";
 
@@ -24,6 +25,11 @@ interface WebSocketFrameSummary {
   frameType: WebSocketFrameType;
   frameByteLength: number;
   payloadSample?: string;
+  payloadSampleLength?: number;
+  payloadSampleTruncated: boolean;
+  analysisFrameText?: string;
+  analysisFrameTextLength?: number;
+  analysisEligibilityFailureReason?: string;
 }
 
 const truncate = (value: string): string =>
@@ -153,44 +159,86 @@ const summarizeBinarySample = (bytes: Uint8Array): string | undefined => {
   return isMostlyPrintableText(text) ? truncate(text) : undefined;
 };
 
+const buildAnalysisFrameText = (
+  text: string,
+  frameByteLength: number
+): Pick<WebSocketFrameSummary, "analysisFrameText" | "analysisFrameTextLength" | "analysisEligibilityFailureReason"> => {
+  if (frameByteLength > MAX_ANALYSIS_FRAME_BYTES) {
+    return { analysisEligibilityFailureReason: "frame-too-large" };
+  }
+  return {
+    analysisFrameText: text,
+    analysisFrameTextLength: text.length
+  };
+};
+
 const summarizeWebSocketFrame = (data: unknown): WebSocketFrameSummary => {
   if (typeof data === "string") {
     const encoder = new TextEncoder();
+    const byteLength = encoder.encode(data).byteLength;
+    const sample = truncate(data);
     return {
       frameType: "text",
-      frameByteLength: encoder.encode(data).byteLength,
-      payloadSample: truncate(data)
+      frameByteLength: byteLength,
+      payloadSample: sample,
+      payloadSampleLength: sample.length,
+      payloadSampleTruncated: sample.length < data.length,
+      ...buildAnalysisFrameText(data, byteLength)
     };
   }
 
   if (data instanceof ArrayBuffer) {
     const bytes = new Uint8Array(data);
+    const sample = summarizeBinarySample(bytes);
+    const decoded =
+      bytes.byteLength <= MAX_ANALYSIS_FRAME_BYTES
+        ? new TextDecoder("utf-8", { fatal: false }).decode(bytes)
+        : undefined;
     return {
       frameType: "arraybuffer",
       frameByteLength: bytes.byteLength,
-      payloadSample: summarizeBinarySample(bytes)
+      payloadSample: sample,
+      payloadSampleLength: sample?.length,
+      payloadSampleTruncated: bytes.byteLength > MAX_SAMPLE_LEN,
+      ...(decoded
+        ? buildAnalysisFrameText(decoded, bytes.byteLength)
+        : { analysisEligibilityFailureReason: "frame-too-large" })
     };
   }
 
   if (ArrayBuffer.isView(data)) {
     const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    const sample = summarizeBinarySample(bytes);
+    const decoded =
+      bytes.byteLength <= MAX_ANALYSIS_FRAME_BYTES
+        ? new TextDecoder("utf-8", { fatal: false }).decode(bytes)
+        : undefined;
     return {
       frameType: "typed-array",
       frameByteLength: bytes.byteLength,
-      payloadSample: summarizeBinarySample(bytes)
+      payloadSample: sample,
+      payloadSampleLength: sample?.length,
+      payloadSampleTruncated: bytes.byteLength > MAX_SAMPLE_LEN,
+      ...(decoded
+        ? buildAnalysisFrameText(decoded, bytes.byteLength)
+        : { analysisEligibilityFailureReason: "frame-too-large" })
     };
   }
 
   if (typeof Blob !== "undefined" && data instanceof Blob) {
     return {
       frameType: "blob",
-      frameByteLength: data.size
+      frameByteLength: data.size,
+      payloadSampleTruncated: false,
+      analysisEligibilityFailureReason: "unsupported-envelope"
     };
   }
 
   return {
     frameType: "unknown",
-    frameByteLength: 0
+    frameByteLength: 0,
+    payloadSampleTruncated: false,
+    analysisEligibilityFailureReason: "unknown"
   };
 };
 
@@ -207,6 +255,11 @@ const createWebSocketFrameMessage = (
     frameType: summary.frameType,
     frameByteLength: summary.frameByteLength,
     payloadSample: summary.payloadSample,
+    payloadSampleLength: summary.payloadSampleLength,
+    payloadSampleTruncated: summary.payloadSampleTruncated,
+    analysisFrameText: summary.analysisFrameText,
+    analysisFrameTextLength: summary.analysisFrameTextLength,
+    analysisEligibilityFailureReason: summary.analysisEligibilityFailureReason,
     initiatorLocation: extractInitiatorLocation()
   }
 });

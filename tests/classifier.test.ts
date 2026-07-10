@@ -44,4 +44,18 @@ describe("classifier", () => {
     expect(redacted.evidence).not.toContain(secret);
     expect(redacted.hash).toHaveLength(64);
   });
+
+  it("does not classify runtime transport metadata as token-like secrets", () => {
+    const sample = JSON.stringify({
+      runtime_host: "runtime-sanitized.prod.colab.dev",
+      session_id: "runtime-session-token-sanitized-1234567890",
+      kernel_id: "550e8400-e29b-41d4-a716-446655440000",
+      notebook_id: "notebook-sanitized-abcdef1234567890"
+    });
+    const payload = classifyPayload(sample);
+    expect(payload.categories).not.toContain("token-like");
+    expect(payload.categories).not.toContain("bearer-token");
+    expect(payload.categories).toContain("uuid");
+    expect(payload.categories).toContain("notebook-metadata");
+  });
 });

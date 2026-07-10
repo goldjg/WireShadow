@@ -2,6 +2,7 @@ import { classifyPayload, classifyUrl } from "./classifier.js";
 import type {
   DelegatedExecutionEvent,
   Destination,
+  SemanticEvidence,
   EventSource,
   InitiatingApi,
   ObservedEvent,
@@ -29,6 +30,7 @@ export interface BuildObservedEventInput {
   riskFlags?: RiskFlag[];
   trustBoundaryEvents?: TrustBoundaryEvent[];
   delegatedExecutionEvent?: DelegatedExecutionEvent;
+  evidenceSummary?: SemanticEvidence[];
   timeline?: TrustBoundaryTimelineEvent[];
   riskScore?: RiskScore;
   detectedCapabilities?: string[];
@@ -52,6 +54,7 @@ export const buildObservedEvent = ({
   riskFlags = [],
   trustBoundaryEvents = [],
   delegatedExecutionEvent,
+  evidenceSummary,
   timeline = [],
   riskScore,
   detectedCapabilities = [],
@@ -80,6 +83,7 @@ export const buildObservedEvent = ({
     recogniserFindings: findings,
     trustBoundaryEvents,
     delegatedExecutionEvent,
+    evidenceSummary,
     timeline,
     riskScore,
     detectedCapabilities: Array.from(new Set(detectedCapabilities)),

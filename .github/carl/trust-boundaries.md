@@ -19,9 +19,10 @@
 3. WireShadow Lite captures observability metadata, not full secrets or full payload dumps.
 4. Delegated runtime behavior is represented as risk findings, not simulated exfiltration.
 5. Canonical cARL artefacts outrank adapters and prompt/session memory.
+6. Complete bounded frame/code content may be processed transiently in-memory for protocol parsing and semantic extraction, then discarded; only redacted metadata is retained/emitted.
 
 ## Trust-boundary events (event model contract)
 
 - `browser -> saas-control-plane` (user/browser request intent)
 - `saas-control-plane -> managed-runtime` (delegated execution transition)
-- `managed-runtime -> external-egress` (potential hidden egress indicator)
+- `managed-runtime -> external-egress` (potential/inferred hidden egress indicator only; downstream observed status is `unknown` in Lite mode)

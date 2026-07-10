@@ -34,6 +34,12 @@ const isWebSocketFramePayload = (value: unknown): boolean => {
     isWebSocketFrameType(value.frameType) &&
     typeof value.frameByteLength === "number" &&
     (typeof value.payloadSample === "undefined" || typeof value.payloadSample === "string") &&
+    (typeof value.payloadSampleLength === "undefined" || typeof value.payloadSampleLength === "number") &&
+    (typeof value.payloadSampleTruncated === "undefined" || typeof value.payloadSampleTruncated === "boolean") &&
+    (typeof value.analysisFrameText === "undefined" || typeof value.analysisFrameText === "string") &&
+    (typeof value.analysisFrameTextLength === "undefined" || typeof value.analysisFrameTextLength === "number") &&
+    (typeof value.analysisEligibilityFailureReason === "undefined" ||
+      typeof value.analysisEligibilityFailureReason === "string") &&
     (typeof value.initiatorLocation === "undefined" || typeof value.initiatorLocation === "string")
   );
 };

@@ -67,7 +67,25 @@ WireShadow originated from SPADE research (**Side-channel Platform Abuse and Dat
 - Colab can execute network activity from child frames; baseline instrumentation should run in all frames, with frame-aware de-duplication as a follow-on refinement.
 - HAR-derived Colab protocol truth: delegated execution intent is primarily visible in outbound Jupyter kernel WebSocket frames (`execute_request` on `/api/kernels/<id>/channels`), not only in fetch/XHR.
 - Colab LSP WebSocket traffic (`textDocument/didOpen`/`didChange` on `/colab/lsp`) is useful as notebook-content/edit signal but must not be treated as execution trigger.
+- Live Colab kernel frames can be wrapped as nested envelopes, arrays, stringified JSON, or prefixed transport payloads; recogniser parsing must be bounded, recursive, and protocol-aware to recover Jupyter `execute_request` safely.
+- Empty `execute_request.content.code` is protocol telemetry only and must not overwrite the latest meaningful semantic execution event.
+- Semantic risk flags should be strictly evidence-gated from correlated non-empty execution events; ordinary Colab page traffic alone should not produce delegated-execution flags.
+- Token-like classifier heuristics need context-aware exclusions for Colab/runtime transport metadata (runtime host/session/kernel/notebook IDs) to avoid false secret classification.
+- Notebook semantics are distributed across executions; single-cell execute_request analysis is insufficient for outbound-risk attribution.
+- Session-scoped semantic correlation should track imports, aliases, function definitions, assignments, and calls keyed by hashed runtime context (tab/notebook/kernel) with bounded size and expiry; frame-id inclusion can fragment same-notebook sessions.
+- Call parsing for semantic correlation must support assignment-wrapped multiline call shapes (for example `result = upload_to_github(...)`) so later invocations resolve to previously observed symbols.
+- Resolution diagnostics should use explicit taxonomy (`definition-not-seen`, `session-mismatch`, `parser-failed`, `unsupported-call-shape`, `state-expired`, `state-reset`, etc.) and remain redacted metadata-only.
+- Correlated semantic findings should carry explicit evidence levels: observed, correlated, inferred, unknown.
+- Generic semantic analysis (symbol capability mapping, argument provenance, call resolution) belongs in shared core layers; recognisers should keep only service-specific attribution and protocol quirks.
+- Semantic parsing must use complete bounded WebSocket frame text first, then derive a separate truncated display sample; display truncation must never be the semantic-analysis source.
+- Safe semantic diagnostics should track parse/extraction/analysis counters and bounded failure reasons without storing raw frame/code content.
+- Generic function-definition extraction must handle decorated and multiline signatures (including async) or semantic state will show assignments/calls without persisted functions.
+- Function persistence diagnostics should distinguish parser recognition, semantic fact emission, and symbol-store insertion outcomes to isolate definition-not-seen root causes.
 - Drive multipart autosave requests may contain notebook content but should remain secondary evidence relative to kernel WebSocket execution messages.
+- MV3 content scripts must be delivered as classic script bundles; unresolved top-level imports in compiled content script output prevent startup.
+- Canonical unpacked extension output directory is `dist/extension`, built via `tsc --noEmit` + esbuild bundling + static asset copy.
+- Build pipeline verifies `dist/extension/content-script.js` and `dist/extension/page-world.js` parse as classic scripts to prevent module-syntax regressions.
+- MV3 popup pages run under CSP that blocks inline JavaScript; popup runtime logic must be externalized and bundled as `panel/panel.js`.
 
 ## Canonical validation commands
 - `npm run build`

@@ -13,4 +13,6 @@
 - Observe metadata safely; do not collect full sensitive payloads.
 - Use classifier + redaction before retaining evidence.
 - Represent delegated execution as semantic risk signals.
+- Treat managed-runtime to external-egress as potential/inferred only in Lite mode; downstream observed status remains unknown.
 - Keep no implementation that performs or assists exfiltration.
+- Allow transient in-memory full-frame/code parsing only within bounded limits; retain and emit redacted metadata-only diagnostics.

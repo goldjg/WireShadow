@@ -37,9 +37,44 @@ const CLOUD_STORAGE_RE =
   /\b(?:drive\.google\.com|google drive|dropbox|onedrive|s3(?:\.amazonaws\.com)?|blob\.core\.windows\.net|azure\.blob)\b/i;
 const HTTP_METHOD_RE = /\b(?:GET|POST|PUT|PATCH|DELETE)\b/;
 const NOTEBOOK_METADATA_RE = /\b(?:metadata|kernelspec|language_info|google\.colab)\b/i;
+const TRANSPORT_METADATA_KEY_RE =
+  /\b(?:runtime|session|kernel|notebook|proxy|transport|channel)[_-]?(?:id|token|host|name)?\b/i;
+const COLAB_RUNTIME_HOST_RE = /\.prod\.colab\.dev$/i;
 
 const extractMatches = (input: string, pattern: RegExp): string[] =>
   Array.from(input.matchAll(pattern)).map((m) => m[0]);
+
+const looksLikeRuntimeTransportMetadata = (token: string, input: string): boolean => {
+  if (UUID_RE.test(token)) {
+    UUID_RE.lastIndex = 0;
+    return true;
+  }
+  UUID_RE.lastIndex = 0;
+
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const tokenContextRe = new RegExp(
+    `(?:${TRANSPORT_METADATA_KEY_RE.source})\\s*[:=]\\s*["']?${escaped}["']?`,
+    "i"
+  );
+  if (tokenContextRe.test(input)) {
+    return true;
+  }
+
+  const hostContextRe = new RegExp(`https?:\\/\\/[^\\s"'<>]*${escaped}[^\\s"'<>]*`, "i");
+  const hostMatch = input.match(hostContextRe)?.[0];
+  if (hostMatch) {
+    try {
+      const parsed = new URL(hostMatch);
+      if (COLAB_RUNTIME_HOST_RE.test(parsed.host)) {
+        return true;
+      }
+    } catch {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 const addEvidence = (
   categories: ClassificationCategory[],
@@ -88,7 +123,9 @@ export const classifyPayload = (input: string): PayloadClassification => {
   addEvidence(categories, evidence, "ip-address", extractMatches(input, IPV4_RE), 2);
   addEvidence(categories, evidence, "api-key-like", extractMatches(input, API_KEY_LIKE_RE));
 
-  const tokens = extractMatches(input, TOKEN_LIKE_RE).filter((token) => token.length >= 32);
+  const tokens = extractMatches(input, TOKEN_LIKE_RE).filter(
+    (token) => token.length >= 32 && !looksLikeRuntimeTransportMetadata(token, input)
+  );
   addEvidence(categories, evidence, "token-like", tokens);
   addEvidence(categories, evidence, "base64-blob", extractMatches(input, BASE64_RE), 2);
   addEvidence(categories, evidence, "embedded-data", extractMatches(input, EMBEDDED_DATA_RE), 2);
