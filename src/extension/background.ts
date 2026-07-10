@@ -320,6 +320,14 @@ const inferCorrelatedRiskInputs = (
   };
 };
 
+const hasCorrelatedEgressPotential = (inputs: ReturnType<typeof inferCorrelatedRiskInputs>): boolean =>
+  inputs.networkingCode ||
+  inputs.githubOutbound ||
+  inputs.knownOutboundSymbolInvoked ||
+  inputs.writeCapableHttpBehavior ||
+  inputs.knownExternalDestination ||
+  inputs.shellOrSubprocessCapability;
+
 const buildDefaultEvidenceSummary = (): CorrelatedEvidence[] => [
   { level: "observed", detail: "Jupyter execute_request observed" },
   { level: "unknown", detail: "Downstream request success" }
@@ -520,7 +528,7 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
   > = [];
   if (wsSemantic.executeRequestHasCode && correlatedInputs) {
     riskFlags.push("delegated-execution", "code-execution");
-    if (correlatedInputs.networkingCode) {
+    if (hasCorrelatedEgressPotential(correlatedInputs)) {
       riskFlags.push("hidden-egress");
     }
     if (correlatedInputs.embeddedData) {
@@ -535,7 +543,9 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
     ? [
         "browser->saas-control-plane",
         "saas-control-plane->managed-runtime",
-        ...(correlatedInputs?.networkingCode ? ["managed-runtime->potential-external-egress"] : [])
+        ...(correlatedInputs && hasCorrelatedEgressPotential(correlatedInputs)
+          ? ["managed-runtime->potential-external-egress"]
+          : [])
       ]
     : wsSemantic.trustBoundaryCrossings;
 

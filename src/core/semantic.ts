@@ -20,6 +20,14 @@ export interface DelegatedRiskInputs {
   shellOrSubprocessCapability?: boolean;
 }
 
+const hasEgressPotential = (inputs: DelegatedRiskInputs): boolean =>
+  inputs.networkingCode ||
+  inputs.githubOutbound ||
+  inputs.knownOutboundSymbolInvoked === true ||
+  inputs.writeCapableHttpBehavior === true ||
+  inputs.knownExternalDestination === true ||
+  inputs.shellOrSubprocessCapability === true;
+
 const BASE_FACTORS: Omit<RiskScoreFactor, "detected">[] = [
   { id: "notebook-edited", title: "Notebook edited", score: 5 },
   { id: "networking-code", title: "Networking code detected", score: 25 },
@@ -135,11 +143,10 @@ export const buildDelegatedExecutionEvent = (
   confidence,
   trigger,
   executionLanguage: "python",
-  outboundCapabilityDetected: inputs.networkingCode,
+  outboundCapabilityDetected: hasEgressPotential(inputs),
   embeddedDataDetected: inputs.embeddedData,
-  trustBoundaryCrossed: inputs.notebookExecuted || inputs.networkingCode,
+  trustBoundaryCrossed: inputs.notebookExecuted || hasEgressPotential(inputs),
   downstreamActivityObserved: "unknown",
   knownSymbolInvoked: options?.knownSymbolInvoked,
   inheritedCapabilities: options?.inheritedCapabilities
 });
-

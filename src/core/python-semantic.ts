@@ -224,6 +224,15 @@ const detectCapabilities = (value: string): PythonCapability[] => {
     capabilities.add("data-upload");
     capabilities.add("outbound-write");
   }
+  if (
+    /\b(create_file|update_file|create_issue|create_pull|create_release|create_comment|upload_file|upload_blob|push)\s*\(/i.test(
+      value
+    )
+  ) {
+    capabilities.add("github-target");
+    capabilities.add("data-upload");
+    capabilities.add("outbound-write");
+  }
   return Array.from(capabilities);
 };
 
@@ -608,6 +617,49 @@ const resolveArgumentProvenance = (
   };
 };
 
+const buildDirectCallInvocation = (
+  call: { callee: string; args: string[] },
+  variables: Map<string, StoredVariableProvenance>
+): InvocationCorrelation | undefined => {
+  const callExpression = `${call.callee}(${call.args.join(", ")})`;
+  const inferredCapabilities = detectCapabilities(callExpression);
+  if (inferredCapabilities.length === 0) {
+    return undefined;
+  }
+
+  const argumentProvenance = call.args.map((argument) => {
+    const resolved = resolveArgumentProvenance(argument, variables);
+    return {
+      parameter: resolved.name,
+      source: argument.includes("=") ? ("keyword" as const) : ("positional" as const),
+      category: resolved.category,
+      hash: resolved.hash
+    };
+  });
+  const egressPotential = inferredCapabilities.some((capability) =>
+    ["network-http", "data-upload", "outbound-write", "github-target", "cloud-storage"].includes(capability)
+  );
+  if (!egressPotential) {
+    return undefined;
+  }
+
+  return {
+    observedCall: call.callee,
+    inheritedCapabilities: inferredCapabilities,
+    knownDestinations: detectDestinations(callExpression),
+    argumentProvenance,
+    evidence: [
+      { level: "observed", detail: "Jupyter execute_request observed" },
+      {
+        level: "inferred",
+        detail: "Direct outbound-capable call pattern detected without prior user-defined symbol definition"
+      },
+      { level: "unknown", detail: "Downstream request success" }
+    ],
+    egressPotential
+  };
+};
+
 export class PythonSemanticSessionStore {
   private readonly contexts = new Map<string, SemanticSessionState>();
   private readonly lastResetReason = new Map<string, "state-expired" | "state-reset">();
@@ -844,6 +896,17 @@ export class PythonSemanticSessionStore {
       }
       const functionDefinition = context.functions.get(calleeSimple);
       if (!functionDefinition) {
+        const directInvocation = buildDirectCallInvocation(call, context.variables);
+        if (directInvocation) {
+          invocation = directInvocation;
+          context.lastMeaningfulExecution = invocation;
+          context.latestFunctionInvoked = undefined;
+          latestResolvedFunction = undefined;
+          resolutionFailureReason = "definition-not-seen";
+          context.latestResolutionResult = "failed";
+          context.latestResolutionFailureReason = resolutionFailureReason;
+          break;
+        }
         resolutionFailureReason = "definition-not-seen";
         continue;
       }

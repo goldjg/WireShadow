@@ -121,7 +121,7 @@ Chromium MV3 extension with metadata-only observation pipeline:
 - typed page -> content -> background message contracts
 - background in-memory event store with multi-tab support
 - popup UI view over newest-first observed events
-- popup semantic view for recogniser, timeline, score, capabilities, and trust-boundary crossings
+- popup semantic view for recogniser, timeline, score, capabilities, trust-boundary crossings, latest execution, and latest egress-indicating execution
 - additive payload classification (no raw payload retention)
 - safe redaction evidence (category, length, SHA-256 hash, limited safe evidence)
 - Google Colab SPADE recogniser findings

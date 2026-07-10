@@ -576,6 +576,29 @@ describe("python semantic session store", () => {
     expect(summary.invocation?.inheritedCapabilities).toContain("github-target");
   });
 
+  it("infers outbound-capable direct GitHub SDK call without prior function definition", () => {
+    const store = new PythonSemanticSessionStore();
+    const ctx = "tab:42|kernel:x|notebook:y";
+    store.applyExecution(
+      ctx,
+      ["from github import Github", "gh = Github(GITHUB_TOKEN)", "repo = gh.get_repo('owner/repo')"].join("\n"),
+      "2026-01-01T00:12:00.000Z"
+    );
+    const summary = store.applyExecution(
+      ctx,
+      "repo.create_file('out.txt', 'msg', DLP_TEST_DATA, branch='main')",
+      "2026-01-01T00:12:01.000Z"
+    );
+    expect(summary.invocation).toBeDefined();
+    expect(summary.invocation?.knownSymbolInvoked).toBeUndefined();
+    expect(summary.invocation?.egressPotential).toBe(true);
+    expect(summary.invocation?.inheritedCapabilities).toEqual(
+      expect.arrayContaining(["github-target", "data-upload", "outbound-write"])
+    );
+    expect(summary.resolutionFailureReason).toBe("definition-not-seen");
+    expect(summary.diagnostics.latestResolutionResult).toBe("failed");
+  });
+
   it("every recognised FunctionDef either persists or records an explicit failure reason", () => {
     // Invariant: no silent drops allowed. functionDroppedCount must equal 0 for
     // valid, parseable function definitions.

@@ -131,6 +131,11 @@ const isMeaningfulExecutionEvent = (event: ObservedEvent): boolean =>
   typeof event.metadata?.jupyterCodeHash === "string" &&
   Number(event.metadata?.jupyterCodeLength ?? 0) > 0;
 
+const isEgressIndicativeExecutionEvent = (event: ObservedEvent): boolean =>
+  isMeaningfulExecutionEvent(event) &&
+  (event.riskFlags?.includes("hidden-egress") === true ||
+    event.delegatedExecutionEvent?.outboundCapabilityDetected === true);
+
 const renderSensorStatus = (diagnostics: Diagnostics | undefined, tabSupported: boolean): void => {
   const container = document.getElementById("sensor-status");
   if (!container) {
@@ -231,6 +236,7 @@ const renderSensorStatus = (diagnostics: Diagnostics | undefined, tabSupported: 
 
 const renderOverview = (
   latestMeaningfulExecution: ObservedEvent | undefined,
+  latestEgressExecution: ObservedEvent | undefined,
   diagnostics: Diagnostics | undefined
 ): void => {
   const container = document.getElementById("semantic-overview");
@@ -270,6 +276,11 @@ const renderOverview = (
     .filter((value) => value.length > 0 && value !== "none");
   const sessionHash = String(latestMeaningfulExecution.metadata?.semanticContextKeyHash ?? "none");
   const eventSequenceId = Number(latestMeaningfulExecution.metadata?.semanticExecutionSequenceId ?? 0);
+  const latestEgressTitle = latestEgressExecution
+    ? `${new Date(latestEgressExecution.observedAt).toLocaleTimeString()} (risk ${
+        latestEgressExecution.riskScore?.total ?? 0
+      })`
+    : "none";
 
   container.innerHTML = `
     <div><strong>Latest meaningful execution:</strong> ${
@@ -297,6 +308,7 @@ const renderOverview = (
     <div><strong>Redacted hash:</strong> <code>${escapeHtml(codeHash)}</code></div>
     <div><strong>Delegation confidence:</strong> ${Math.round(confidence * 100)}%</div>
     <div><strong>Egress potential:</strong> ${egressPotential ? "Detected" : "Not detected"}</div>
+    <div><strong>Latest egress-indicating execution:</strong> ${escapeHtml(latestEgressTitle)}</div>
     <div><strong>Downstream activity observed:</strong> ${escapeHtml(toTitleCase(downstreamActivity))}</div>
     <div><strong>Evidence summary:</strong> ${
       evidenceSummary.length
@@ -337,7 +349,8 @@ const render = (events: ObservedEvent[], diagnostics: Diagnostics | undefined, t
 
   renderSensorStatus(diagnostics, tabSupported);
   const latestMeaningfulExecution = events.find((event) => isMeaningfulExecutionEvent(event));
-  renderOverview(latestMeaningfulExecution, diagnostics);
+  const latestEgressExecution = events.find((event) => isEgressIndicativeExecutionEvent(event));
+  renderOverview(latestMeaningfulExecution, latestEgressExecution, diagnostics);
 
   const visibleEvents = showAllTelemetry ? events : events.filter((event) => (event.riskFlags?.length ?? 0) > 0);
   const count = document.getElementById("event-count");

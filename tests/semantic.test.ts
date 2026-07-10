@@ -24,9 +24,7 @@ describe("semantic timeline and scoring", () => {
   it("builds a deterministic trust-boundary timeline", () => {
     const timeline = buildTrustBoundaryTimeline(inputs);
     expect(timeline[0]?.title).toBe("User edited notebook");
-    expect(timeline[timeline.length - 1]?.title).toBe(
-      "Potential downstream network activity outside browser visibility"
-    );
+    expect(timeline[timeline.length - 1]?.title).toBe("Managed runtime -> potential external egress");
   });
 
   it("builds a delegated execution event", () => {
@@ -34,5 +32,19 @@ describe("semantic timeline and scoring", () => {
     expect(event.executionPlatform).toBe("google-colab");
     expect(event.trustBoundaryCrossed).toBe(true);
     expect(event.outboundCapabilityDetected).toBe(true);
+  });
+
+  it("marks outbound capability when correlated egress evidence exists without generic networking signal", () => {
+    const event = buildDelegatedExecutionEvent("jupyter-execute-request", 0.9, {
+      notebookEdited: false,
+      networkingCode: false,
+      embeddedData: false,
+      bearerTokenPattern: false,
+      githubOutbound: true,
+      notebookExecuted: true,
+      knownOutboundSymbolInvoked: true
+    });
+    expect(event.outboundCapabilityDetected).toBe(true);
+    expect(event.trustBoundaryCrossed).toBe(true);
   });
 });
