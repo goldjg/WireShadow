@@ -78,6 +78,7 @@ interface TabObserverState {
   recogniserState: "active" | "inactive";
   latestProtocolEvent?: string;
   latestMeaningfulExecutionEvent?: string;
+  latestEgressExecutionEvent?: string;
   protocolShapeLogsEmitted: number;
   knownSymbolsCount: number;
   knownFunctionsCount: number;
@@ -712,6 +713,15 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
           // THIS execution's outcome, not a stale success from an earlier execution.
           tabState.latestResolvedFunction = semanticExecution.diagnostics.latestResolvedFunction;
         }
+        if (
+          wsSemantic.executeRequestHasCode &&
+          correlatedInputs &&
+          hasCorrelatedEgressPotential(correlatedInputs)
+        ) {
+          tabState.latestEgressExecutionEvent = invocation?.knownSymbolInvoked
+            ? `${invocation.knownSymbolInvoked}(...) invoked (egress-indicating)`
+            : "Notebook execution observed (egress-indicating)";
+        }
         const emittedFacts =
           semanticExecution.diagnostics.importsDetected +
           semanticExecution.diagnostics.functionDefinitionsDetected +
@@ -810,6 +820,7 @@ const buildDiagnostics = (tabId: number | undefined, eventsObserved: number): Ob
     recogniserState: tabState?.recogniserState ?? "inactive",
     latestProtocolEvent: tabState?.latestProtocolEvent,
     latestMeaningfulExecutionEvent: tabState?.latestMeaningfulExecutionEvent,
+    latestEgressExecutionEvent: tabState?.latestEgressExecutionEvent,
     lastSemanticEvent: tabState?.latestMeaningfulExecutionEvent,
     knownSymbolsCount: tabState?.knownSymbolsCount ?? 0,
     knownFunctionsCount: tabState?.knownFunctionsCount ?? 0,

@@ -251,6 +251,7 @@ export interface ObserverDiagnostics {
   recogniserState: "active" | "inactive";
   latestProtocolEvent?: string;
   latestMeaningfulExecutionEvent?: string;
+  latestEgressExecutionEvent?: string;
   lastSemanticEvent?: string;
   knownSymbolsCount?: number;
   knownFunctionsCount?: number;

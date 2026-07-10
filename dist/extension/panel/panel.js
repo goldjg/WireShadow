@@ -20,6 +20,17 @@
   };
   var isMeaningfulExecutionEvent = (event) => event.riskFlags?.includes("code-execution") === true && typeof event.metadata?.jupyterCodeHash === "string" && Number(event.metadata?.jupyterCodeLength ?? 0) > 0;
   var isEgressIndicativeExecutionEvent = (event) => isMeaningfulExecutionEvent(event) && (event.riskFlags?.includes("hidden-egress") === true || event.delegatedExecutionEvent?.outboundCapabilityDetected === true);
+  var classifyDisplayLabel = (event) => {
+    const categories = event.classification?.categories ?? [];
+    const nonUnknown = categories.filter((value) => value !== "unknown");
+    if (nonUnknown.length > 0) {
+      return nonUnknown.join(", ");
+    }
+    if (isEgressIndicativeExecutionEvent(event)) {
+      return "semantic-egress-indicator";
+    }
+    return categories.join(", ") || "unknown";
+  };
   var renderSensorStatus = (diagnostics, tabSupported) => {
     const container = document.getElementById("sensor-status");
     if (!container) {
@@ -46,6 +57,7 @@
     <div><strong>Recogniser state:</strong> ${escapeHtml(toTitleCase(status.recogniserState))}</div>
     <div><strong>Latest protocol event:</strong> ${escapeHtml(status.latestProtocolEvent ?? "none")}</div>
     <div><strong>Latest meaningful execution:</strong> ${escapeHtml(status.latestMeaningfulExecutionEvent ?? status.lastSemanticEvent ?? "none")}</div>
+    <div><strong>Latest egress-indicating execution:</strong> ${escapeHtml(status.latestEgressExecutionEvent ?? "none")}</div>
     <div><strong>Development diagnostics (metadata only):</strong></div>
     <div><strong>Known symbols:</strong> ${escapeHtml(status.knownSymbolsCount ?? 0)}</div>
     <div><strong>Known functions:</strong> ${escapeHtml(status.knownFunctionsCount ?? 0)}</div>
@@ -111,29 +123,33 @@
       container.innerHTML = '<span class="muted">No meaningful semantic execution event observed yet.</span>';
       return;
     }
-    const recogniser = latestMeaningfulExecution.recogniserFindings?.[0]?.recogniserId ?? "none";
-    const riskScore = latestMeaningfulExecution.riskScore?.total ?? 0;
-    const capabilities = latestMeaningfulExecution.detectedCapabilities ?? [];
-    const crossings = latestMeaningfulExecution.trustBoundaryCrossings ?? [];
-    const timeline = latestMeaningfulExecution.timeline ?? [];
-    const factors = (latestMeaningfulExecution.riskScore?.factors ?? []).filter((factor) => factor.detected).map((factor) => `<li>${escapeHtml(factor.title)} (+${factor.score})</li>`).join("");
-    const codeLength = Number(latestMeaningfulExecution.metadata?.jupyterCodeLength ?? 0);
-    const codeHash = String(latestMeaningfulExecution.metadata?.jupyterCodeHash ?? "none");
-    const confidence = latestMeaningfulExecution.delegatedExecutionEvent?.confidence ?? 0;
-    const egressPotential = latestMeaningfulExecution.delegatedExecutionEvent?.outboundCapabilityDetected === true;
-    const executionPlatform = latestMeaningfulExecution.delegatedExecutionEvent?.executionPlatform ?? "unknown";
-    const knownSymbolInvoked = latestMeaningfulExecution.delegatedExecutionEvent?.knownSymbolInvoked ?? "unknown";
-    const inheritedCapabilities = latestMeaningfulExecution.delegatedExecutionEvent?.inheritedCapabilities ?? [];
-    const evidenceSummary = latestMeaningfulExecution.evidenceSummary ?? [];
-    const downstreamActivity = latestMeaningfulExecution.delegatedExecutionEvent?.downstreamActivityObserved ?? "unknown";
-    const resolutionFailureReason = String(latestMeaningfulExecution.metadata?.semanticResolutionFailureReason ?? "none");
+    const focusExecution = latestEgressExecution ?? latestMeaningfulExecution;
+    const recogniser = focusExecution.recogniserFindings?.[0]?.recogniserId ?? "none";
+    const riskScore = focusExecution.riskScore?.total ?? 0;
+    const capabilities = focusExecution.detectedCapabilities ?? [];
+    const crossings = focusExecution.trustBoundaryCrossings ?? [];
+    const timeline = focusExecution.timeline ?? [];
+    const factors = (focusExecution.riskScore?.factors ?? []).filter((factor) => factor.detected).map((factor) => `<li>${escapeHtml(factor.title)} (+${factor.score})</li>`).join("");
+    const codeLength = Number(focusExecution.metadata?.jupyterCodeLength ?? 0);
+    const codeHash = String(focusExecution.metadata?.jupyterCodeHash ?? "none");
+    const confidence = focusExecution.delegatedExecutionEvent?.confidence ?? 0;
+    const egressPotential = focusExecution.delegatedExecutionEvent?.outboundCapabilityDetected === true;
+    const executionPlatform = focusExecution.delegatedExecutionEvent?.executionPlatform ?? "unknown";
+    const knownSymbolInvoked = focusExecution.delegatedExecutionEvent?.knownSymbolInvoked ?? "unknown";
+    const inheritedCapabilities = focusExecution.delegatedExecutionEvent?.inheritedCapabilities ?? [];
+    const evidenceSummary = focusExecution.evidenceSummary ?? [];
+    const downstreamActivity = focusExecution.delegatedExecutionEvent?.downstreamActivityObserved ?? "unknown";
+    const resolutionFailureReason = String(focusExecution.metadata?.semanticResolutionFailureReason ?? "none");
     const resolutionResult = knownSymbolInvoked !== "unknown" ? "Resolved" : resolutionFailureReason !== "none" ? "Failed" : "Unknown";
     const argumentProvenance = String(latestMeaningfulExecution.metadata?.semanticArgumentProvenance ?? "none").split(",").map((value) => value.trim()).filter((value) => value.length > 0 && value !== "none");
-    const sessionHash = String(latestMeaningfulExecution.metadata?.semanticContextKeyHash ?? "none");
-    const eventSequenceId = Number(latestMeaningfulExecution.metadata?.semanticExecutionSequenceId ?? 0);
+    const sessionHash = String(focusExecution.metadata?.semanticContextKeyHash ?? "none");
+    const eventSequenceId = Number(focusExecution.metadata?.semanticExecutionSequenceId ?? 0);
     const latestEgressTitle = latestEgressExecution ? `${new Date(latestEgressExecution.observedAt).toLocaleTimeString()} (risk ${latestEgressExecution.riskScore?.total ?? 0})` : "none";
     container.innerHTML = `
     <div><strong>Latest meaningful execution:</strong> ${escapeHtml(diagnostics?.latestMeaningfulExecutionEvent ?? "Jupyter execute_request observed")}</div>
+    <div><strong>Latest activity (any execution):</strong> ${escapeHtml(
+      diagnostics?.latestMeaningfulExecutionEvent ?? "none"
+    )}</div>
     <div><strong>Current recogniser:</strong> ${escapeHtml(recogniser)}</div>
     <div><strong>Execution platform:</strong> ${escapeHtml(executionPlatform)}</div>
     <div><strong>Known symbol invoked:</strong> ${escapeHtml(knownSymbolInvoked)}</div>
@@ -149,7 +165,9 @@
     <div><strong>Delegation confidence:</strong> ${Math.round(confidence * 100)}%</div>
     <div><strong>Egress potential:</strong> ${egressPotential ? "Detected" : "Not detected"}</div>
     <div><strong>Latest egress-indicating execution:</strong> ${escapeHtml(latestEgressTitle)}</div>
-    <div><strong>Downstream activity observed:</strong> ${escapeHtml(toTitleCase(downstreamActivity))}</div>
+    <div><strong>Downstream activity observed:</strong> ${escapeHtml(
+      downstreamActivity === "unknown" ? "Unknown (not directly observable in Lite mode)" : toTitleCase(downstreamActivity)
+    )}</div>
     <div><strong>Evidence summary:</strong> ${evidenceSummary.length ? `<ul>${evidenceSummary.map(
       (item) => `<li><strong>${escapeHtml(toTitleCase(item.level))}:</strong> ${escapeHtml(item.detail)}</li>`
     ).join("")}</ul>` : '<span class="muted">none</span>'}</div>
@@ -183,7 +201,7 @@
           <td>${escapeHtml(new Date(event.observedAt).toLocaleTimeString())}</td>
           <td>${escapeHtml(event.api)}</td>
           <td>${escapeHtml(event.destination?.host ?? "unknown")}</td>
-          <td>${escapeHtml((event.classification?.categories ?? []).join(", ") || "unknown")}</td>
+          <td>${escapeHtml(classifyDisplayLabel(event))}</td>
           <td>${escapeHtml((event.riskFlags ?? []).join(", ") || "-")}</td>
           <td>${escapeHtml(event.context?.url ?? "-")}</td>
         </tr>

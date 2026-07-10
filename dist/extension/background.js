@@ -2301,6 +2301,9 @@ var ingestWebSocketFrameMessage = (message, sender) => {
           }
           tabState.latestResolvedFunction = semanticExecution.diagnostics.latestResolvedFunction;
         }
+        if (wsSemantic.executeRequestHasCode && correlatedInputs && hasCorrelatedEgressPotential(correlatedInputs)) {
+          tabState.latestEgressExecutionEvent = invocation?.knownSymbolInvoked ? `${invocation.knownSymbolInvoked}(...) invoked (egress-indicating)` : "Notebook execution observed (egress-indicating)";
+        }
         const emittedFacts = semanticExecution.diagnostics.importsDetected + semanticExecution.diagnostics.functionDefinitionsDetected + semanticExecution.diagnostics.assignmentsDetected + semanticExecution.diagnostics.callsDetected;
         tabState.semanticFactsEmitted += emittedFacts;
         if (emittedFacts === 0) {
@@ -2386,6 +2389,7 @@ var buildDiagnostics = (tabId, eventsObserved) => {
     recogniserState: tabState?.recogniserState ?? "inactive",
     latestProtocolEvent: tabState?.latestProtocolEvent,
     latestMeaningfulExecutionEvent: tabState?.latestMeaningfulExecutionEvent,
+    latestEgressExecutionEvent: tabState?.latestEgressExecutionEvent,
     lastSemanticEvent: tabState?.latestMeaningfulExecutionEvent,
     knownSymbolsCount: tabState?.knownSymbolsCount ?? 0,
     knownFunctionsCount: tabState?.knownFunctionsCount ?? 0,
