@@ -59,6 +59,10 @@ interface Diagnostics {
   functionStoreInsertionSucceededCount?: number;
   functionStoreInsertionFailedCount?: number;
   functionDroppedCount?: number;
+  // runtime epoch (kernel UUID / connection generation)
+  currentKernelId?: string;
+  kernelEpochChanges?: number;
+  lastKernelRestartAt?: string;
 }
 
 interface ObservedEvent {
@@ -207,6 +211,11 @@ const renderSensorStatus = (diagnostics: Diagnostics | undefined, tabSupported: 
     <div><strong>Function store insertions succeeded (cumulative):</strong> ${escapeHtml(status.functionStoreInsertionSucceededCount ?? 0)}</div>
     <div><strong>Function store insertions failed (cumulative):</strong> ${escapeHtml(status.functionStoreInsertionFailedCount ?? 0)}</div>
     <div><strong>Functions dropped (cumulative):</strong> ${escapeHtml(status.functionDroppedCount ?? 0)}</div>
+    <div><strong>Runtime epoch — kernel ID (hashed):</strong> <code>${escapeHtml(
+      status.currentKernelId ? status.currentKernelId.slice(0, 12) + "…" : "none"
+    )}</code></div>
+    <div><strong>Kernel epoch changes (reconnects/replacements):</strong> ${escapeHtml(status.kernelEpochChanges ?? 0)}</div>
+    <div><strong>Last kernel restart observed:</strong> ${escapeHtml(status.lastKernelRestartAt ?? "none")}</div>
     <div><strong>Current tab supported:</strong> ${tabSupported ? "Yes" : "No"}</div>
   `;
 };

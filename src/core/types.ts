@@ -301,6 +301,10 @@ export interface ObserverDiagnostics {
   functionStoreInsertionSucceededCount?: number;
   functionStoreInsertionFailedCount?: number;
   functionDroppedCount?: number;
+  // runtime epoch: kernel UUID / connection generation
+  currentKernelId?: string;
+  kernelEpochChanges?: number;
+  lastKernelRestartAt?: string;
 }
 
 export interface PanelEventsMessage {

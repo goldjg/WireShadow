@@ -128,6 +128,13 @@ interface TabObserverState {
   functionStoreInsertionSucceededCumulative: number;
   functionStoreInsertionFailedCumulative: number;
   functionDroppedCumulative: number;
+  // runtime epoch tracking (kernel UUID / connection generation)
+  // Separate from the durable tab+notebook semantic scope.
+  // A new kernel UUID without a restart signal = reconnect (definitions preserved).
+  // A kernelResetSignal = true restart (Python state gone, notebook context cleared).
+  currentKernelId?: string;
+  kernelEpochChanges: number;
+  lastKernelRestartAt?: string;
 }
 
 const observerStateByTab = new Map<number, TabObserverState>();
@@ -154,8 +161,7 @@ const hashStable = (value: string): string => redactValue("unknown", value).hash
 const extractKernelId = (socketUrl: string): string | undefined => {
   try {
     const parsed = new URL(socketUrl);
-    const match = parsed.pathname.match(/\/api\/kernels\/([^/]+)\/channels/i);
-    return match?.[1];
+    return parsed.pathname.match(/\/api\/kernels\/([^/]+)\/channels/i)?.[1];
   } catch {
     return undefined;
   }
@@ -178,7 +184,7 @@ const extractNotebookId = (pageUrl: string): string | undefined => {
   return undefined;
 };
 
-export const buildSemanticContextKey = (socketUrl: string, pageUrl: string, sender: RuntimeSender): string => {
+export const buildSemanticContextKey = (_socketUrl: string, pageUrl: string, sender: RuntimeSender): string => {
   const tab = sender.tab?.id ?? -1;
   const pageOriginPath = (() => {
     try {
@@ -188,9 +194,14 @@ export const buildSemanticContextKey = (socketUrl: string, pageUrl: string, send
       return pageUrl;
     }
   })();
-  const kernelHash = hashStable(extractKernelId(socketUrl) ?? "none");
   const notebookHash = hashStable(extractNotebookId(pageUrl) ?? pageOriginPath);
-  return `tab:${tab}|kernel:${kernelHash}|notebook:${notebookHash}`;
+  // Context key is scoped to tab+notebook (the durable notebook identity), not to
+  // kernel UUID (the runtime epoch).  Definitions persist across transport reconnects
+  // within the same runtime epoch; they do NOT automatically persist across a true
+  // kernel restart (Python state is gone) or an undetected runtime replacement.
+  // The kernel UUID is tracked separately in TabObserverState.currentKernelId so
+  // reconnects vs replacements vs genuine restarts remain observable.
+  return `tab:${tab}|notebook:${notebookHash}`;
 };
 
 const getOrCreateTabState = (tabId: number): TabObserverState => {
@@ -234,7 +245,8 @@ const getOrCreateTabState = (tabId: number): TabObserverState => {
     functionExtractionFailed: 0,
     functionStoreInsertionSucceededCumulative: 0,
     functionStoreInsertionFailedCumulative: 0,
-    functionDroppedCumulative: 0
+    functionDroppedCumulative: 0,
+    kernelEpochChanges: 0
   };
   observerStateByTab.set(tabId, created);
   return created;
@@ -444,7 +456,22 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
     if (typeof sender.tab?.id === "number") {
       const resetState = getOrCreateTabState(sender.tab.id);
       resetState.lastStateResetReason = "state-reset";
+      resetState.lastKernelRestartAt = observedAt;
       observerStateByTab.set(sender.tab.id, resetState);
+    }
+  }
+
+  // Runtime epoch tracking: kernel UUID is diagnostically tracked separately from
+  // the durable tab+notebook semantic scope.  A new UUID without a restart signal
+  // is a reconnect (definitions preserved).  A restart signal means Python state
+  // is gone and we already cleared the notebook context above.
+  if (typeof sender.tab?.id === "number") {
+    const epochState = getOrCreateTabState(sender.tab.id);
+    const observedKernelId = extractKernelId(message.payload.socketUrl);
+    if (observedKernelId !== undefined && observedKernelId !== epochState.currentKernelId) {
+      epochState.kernelEpochChanges += 1;
+      epochState.currentKernelId = observedKernelId;
+      observerStateByTab.set(sender.tab.id, epochState);
     }
   }
 
@@ -606,10 +633,10 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
     if (invocation?.knownSymbolInvoked) {
       tabState.latestMeaningfulExecutionEvent = `${invocation.knownSymbolInvoked}(...) invoked`;
     }
-    tabState.currentSemanticSessionHash = hashStable(semanticContextKey);
     if (semanticExecution) {
       // Only update counts/latest-state from actual semantic execution so that
       // non-execution frames (heartbeats, status, LSP) do not overwrite them.
+      tabState.currentSemanticSessionHash = hashStable(semanticContextKey);
       tabState.knownFunctionsCount = semanticExecution.diagnostics.semanticStoreFunctionsAfter;
       tabState.knownVariablesCount = semanticExecution.diagnostics.semanticStoreVariablesAfter;
       tabState.knownSymbolsCount = tabState.knownFunctionsCount + tabState.knownVariablesCount;
@@ -623,9 +650,10 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
     if (semanticExecution?.diagnostics.latestResolutionResult) {
       tabState.latestResolutionResult = semanticExecution.diagnostics.latestResolutionResult;
     }
-    tabState.latestResolutionFailureReason =
-      (resolutionFailureReason ??
-        semanticExecution?.diagnostics.latestResolutionFailureReason) as ResolutionFailureReason | undefined;
+    const resolvedFailureReason = resolutionFailureReason ?? semanticExecution?.diagnostics.latestResolutionFailureReason;
+    if (resolvedFailureReason !== undefined) {
+      tabState.latestResolutionFailureReason = resolvedFailureReason as ResolutionFailureReason;
+    }
     if (codeAnalysisAttempted) {
       tabState.astAnalysisAttempts += 1;
       if (semanticExecution) {
@@ -800,7 +828,10 @@ const buildDiagnostics = (tabId: number | undefined, eventsObserved: number): Ob
     functionExtractionFailed: tabState?.functionExtractionFailed ?? 0,
     functionStoreInsertionSucceededCount: tabState?.functionStoreInsertionSucceededCumulative ?? 0,
     functionStoreInsertionFailedCount: tabState?.functionStoreInsertionFailedCumulative ?? 0,
-    functionDroppedCount: tabState?.functionDroppedCumulative ?? 0
+    functionDroppedCount: tabState?.functionDroppedCumulative ?? 0,
+    currentKernelId: tabState?.currentKernelId,
+    kernelEpochChanges: tabState?.kernelEpochChanges ?? 0,
+    lastKernelRestartAt: tabState?.lastKernelRestartAt
   };
 };
 

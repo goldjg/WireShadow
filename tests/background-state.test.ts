@@ -45,7 +45,8 @@ describe("background semantic state", () => {
       functionExtractionFailed: 0,
       functionStoreInsertionSucceededCumulative: 0,
       functionStoreInsertionFailedCumulative: 0,
-      functionDroppedCumulative: 0
+      functionDroppedCumulative: 0,
+      kernelEpochChanges: 0
     };
 
     const withCode = recogniseColabWebSocketFrame(COLAB_KERNEL_SOCKET_URL, JUPYTER_EXECUTE_REQUEST_WITH_CODE);
