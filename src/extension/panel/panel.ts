@@ -63,6 +63,11 @@ interface Diagnostics {
   currentKernelId?: string;
   kernelEpochChanges?: number;
   lastKernelRestartAt?: string;
+  // per-execution correlation fields
+  storedFunctionNames?: string[];
+  latestAttemptedFunction?: string;
+  latestResolvedFunction?: string;
+  latestExecutionSequenceId?: number;
 }
 
 interface ObservedEvent {
@@ -162,6 +167,10 @@ const renderSensorStatus = (diagnostics: Diagnostics | undefined, tabSupported: 
     <div><strong>Semantic session hash:</strong> <code>${escapeHtml(status.currentSemanticSessionHash ?? "none")}</code></div>
     <div><strong>Latest function defined:</strong> ${escapeHtml(status.latestFunctionDefined ?? "none")}</div>
     <div><strong>Latest function invoked:</strong> ${escapeHtml(status.latestFunctionInvoked ?? "none")}</div>
+    <div><strong>Latest attempted function (this exec):</strong> ${escapeHtml(status.latestAttemptedFunction ?? "none")}</div>
+    <div><strong>Latest resolved function (this exec):</strong> ${escapeHtml(status.latestResolvedFunction ?? "none")}</div>
+    <div><strong>Execution sequence (context):</strong> ${escapeHtml(status.latestExecutionSequenceId ?? 0)}</div>
+    <div><strong>Stored function names:</strong> ${escapeHtml(status.storedFunctionNames?.join(", ") || "none")}</div>
     <div><strong>Latest resolution result:</strong> ${escapeHtml(status.latestResolutionResult ?? "none")}</div>
     <div><strong>Latest resolution failure reason:</strong> ${
       escapeHtml(status.latestResolutionFailureReason ?? "none")
@@ -260,6 +269,7 @@ const renderOverview = (
     .map((value) => value.trim())
     .filter((value) => value.length > 0 && value !== "none");
   const sessionHash = String(latestMeaningfulExecution.metadata?.semanticContextKeyHash ?? "none");
+  const eventSequenceId = Number(latestMeaningfulExecution.metadata?.semanticExecutionSequenceId ?? 0);
 
   container.innerHTML = `
     <div><strong>Latest meaningful execution:</strong> ${
@@ -281,6 +291,7 @@ const renderOverview = (
         : '<span class="muted">none</span>'
     }</div>
     <div><strong>Session hash:</strong> <code>${escapeHtml(sessionHash)}</code></div>
+    <div><strong>Event execution sequence:</strong> ${eventSequenceId} (tab context; compare with dev diagnostics to check staleness)</div>
     <div><strong>Risk score:</strong> ${riskScore}</div>
     <div><strong>Code length:</strong> ${codeLength}</div>
     <div><strong>Redacted hash:</strong> <code>${escapeHtml(codeHash)}</code></div>

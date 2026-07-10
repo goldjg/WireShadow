@@ -101,6 +101,10 @@ export interface SemanticExecutionSummary {
     semanticStoreVariablesAfter: number;
     semanticStoreSizeBefore: number;
     semanticStoreSizeAfter: number;
+    executionSequenceId: number;
+    latestAttemptedFunction?: string;
+    latestResolvedFunction?: string;
+    storedFunctionNames: string[];
     latestFunctionDefined?: string;
     latestFunctionInvoked?: string;
     latestResolutionResult: "resolved" | "failed" | "none";
@@ -718,6 +722,8 @@ export class PythonSemanticSessionStore {
     let functionStoreInsertionSucceeded = false;
     let functionStoreInsertionFailureReason: FunctionAnalysisFailureReason | undefined;
     let latestFunctionAnalysisFailureReason: FunctionAnalysisFailureReason | undefined;
+    let latestAttemptedFunction: string | undefined;
+    let latestResolvedFunction: string | undefined;
     // cumulative per-call function pipeline counters
     let functionExtractionAttemptedCount = 0;
     let functionExtractionSucceededCount = 0;
@@ -832,6 +838,10 @@ export class PythonSemanticSessionStore {
     for (const call of calls) {
       const calleeParts = call.callee.split(".");
       const calleeSimple = calleeParts[calleeParts.length - 1] ?? call.callee;
+      // Record the first callee attempted regardless of resolution outcome.
+      if (!latestAttemptedFunction) {
+        latestAttemptedFunction = calleeSimple;
+      }
       const functionDefinition = context.functions.get(calleeSimple);
       if (!functionDefinition) {
         resolutionFailureReason = "definition-not-seen";
@@ -861,6 +871,7 @@ export class PythonSemanticSessionStore {
       invocation.evidence = describeCorrelatedEvidence(invocation, functionDefinition);
       context.lastMeaningfulExecution = invocation;
       context.latestFunctionInvoked = functionDefinition.name;
+      latestResolvedFunction = functionDefinition.name;
       context.latestResolutionResult = "resolved";
       context.latestResolutionFailureReason = undefined;
       break;
@@ -920,6 +931,10 @@ export class PythonSemanticSessionStore {
         assignmentsDetected: assignments.length,
         callsDetected: calls.length,
         callResolved: Boolean(invocation),
+        executionSequenceId: context.executionOrder,
+        latestAttemptedFunction,
+        latestResolvedFunction,
+        storedFunctionNames: Array.from(context.functions.keys()),
         semanticStoreFunctionsBefore,
         semanticStoreVariablesBefore,
         semanticStoreFunctionsAfter,

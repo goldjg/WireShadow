@@ -135,6 +135,12 @@ interface TabObserverState {
   currentKernelId?: string;
   kernelEpochChanges: number;
   lastKernelRestartAt?: string;
+  // per-execution correlation: these fields reflect the most recent invocation-containing
+  // execution so cumulative diagnostics and the latest event can be matched by sequence ID.
+  latestAttemptedFunction?: string;
+  latestResolvedFunction?: string;
+  latestExecutionSequenceId?: number;
+  storedFunctionNames?: string[];
 }
 
 const observerStateByTab = new Map<number, TabObserverState>();
@@ -607,6 +613,7 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
         invocation?.argumentProvenance.map((value) => value.category).join(",") ?? "none",
       semanticStoreSizeBefore: semanticExecution?.diagnostics.semanticStoreSizeBefore ?? 0,
       semanticStoreSizeAfter: semanticExecution?.diagnostics.semanticStoreSizeAfter ?? 0,
+      semanticExecutionSequenceId: semanticExecution?.diagnostics.executionSequenceId ?? 0,
       analysisInputLength: message.payload.analysisFrameTextLength ?? 0,
       analysisInputProvided: typeof message.payload.analysisFrameText === "string",
       analysisDisplaySampleLength: message.payload.payloadSampleLength ?? (message.payload.payloadSample?.length ?? 0),
@@ -682,6 +689,19 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
         tabState.functionStoreInsertionSucceededCumulative += semanticExecution.diagnostics.functionStoreInsertionSucceededCount;
         tabState.functionStoreInsertionFailedCumulative += semanticExecution.diagnostics.functionStoreInsertionFailedCount;
         tabState.functionDroppedCumulative += semanticExecution.diagnostics.functionDroppedCount;
+        // per-execution correlation fields — update sequence ID every execution;
+        // update attempted/resolved/stored only when calls were detected so they reflect
+        // the most recent invocation-containing execution rather than any execution.
+        tabState.latestExecutionSequenceId = semanticExecution.diagnostics.executionSequenceId;
+        tabState.storedFunctionNames = semanticExecution.diagnostics.storedFunctionNames;
+        if (semanticExecution.diagnostics.callsDetected > 0) {
+          if (semanticExecution.diagnostics.latestAttemptedFunction) {
+            tabState.latestAttemptedFunction = semanticExecution.diagnostics.latestAttemptedFunction;
+          }
+          // Intentionally overwrites with undefined on failure so the field reflects
+          // THIS execution's outcome, not a stale success from an earlier execution.
+          tabState.latestResolvedFunction = semanticExecution.diagnostics.latestResolvedFunction;
+        }
         const emittedFacts =
           semanticExecution.diagnostics.importsDetected +
           semanticExecution.diagnostics.functionDefinitionsDetected +
@@ -831,7 +851,11 @@ const buildDiagnostics = (tabId: number | undefined, eventsObserved: number): Ob
     functionDroppedCount: tabState?.functionDroppedCumulative ?? 0,
     currentKernelId: tabState?.currentKernelId,
     kernelEpochChanges: tabState?.kernelEpochChanges ?? 0,
-    lastKernelRestartAt: tabState?.lastKernelRestartAt
+    lastKernelRestartAt: tabState?.lastKernelRestartAt,
+    storedFunctionNames: tabState?.storedFunctionNames ?? [],
+    latestAttemptedFunction: tabState?.latestAttemptedFunction,
+    latestResolvedFunction: tabState?.latestResolvedFunction,
+    latestExecutionSequenceId: tabState?.latestExecutionSequenceId
   };
 };
 

@@ -305,6 +305,11 @@ export interface ObserverDiagnostics {
   currentKernelId?: string;
   kernelEpochChanges?: number;
   lastKernelRestartAt?: string;
+  // per-execution correlation fields
+  storedFunctionNames?: string[];
+  latestAttemptedFunction?: string;
+  latestResolvedFunction?: string;
+  latestExecutionSequenceId?: number;
 }
 
 export interface PanelEventsMessage {
