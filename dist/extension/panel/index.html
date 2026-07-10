@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>WireShadow Lite</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+        width: 760px;
+        max-height: 600px;
+        overflow: auto;
+      }
+      main {
+        padding: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #ddd;
+        padding: 6px 4px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        background: #fff;
+      }
+      .muted {
+        color: #666;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px;
+        margin-bottom: 10px;
+      }
+      .chip {
+        display: inline-block;
+        border: 1px solid #aaa;
+        border-radius: 999px;
+        padding: 2px 8px;
+        margin: 2px 4px 2px 0;
+      }
+      ol {
+        margin: 4px 0;
+        padding-left: 18px;
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 8px 0 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>WireShadow Lite</h1>
+      <p class="muted">Passive delegated-execution observability stream (newest first).</p>
+
+      <section id="sensor-status" class="card"></section>
+      <section id="semantic-overview" class="card"></section>
+      <div class="toolbar">
+        <label><input type="checkbox" id="show-all-events" /> Show all raw telemetry</label>
+        <span id="event-count" class="muted"></span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>API</th>
+            <th>Destination</th>
+            <th>Classification</th>
+            <th>Risk flags</th>
+            <th>Current page</th>
+          </tr>
+        </thead>
+        <tbody id="events-body"></tbody>
+      </table>
+    </main>
+    <script src="./panel.js"></script>
+  </body>
+</html>
