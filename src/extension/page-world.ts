@@ -1,4 +1,10 @@
-import type { InitiatingApi, PageWorldObservedEventMessage } from "../core/types.js";
+import type {
+  InitiatingApi,
+  PageWorldObservedEventMessage,
+  PageWorldReadyMessage,
+  PageWorldWebSocketFrameMessage,
+  WebSocketFrameType
+} from "../core/types.js";
 
 const MAX_SAMPLE_LEN = 2048;
 const XHR_META = Symbol("wireshadow-xhr-meta");
@@ -11,6 +17,12 @@ interface XhrMeta {
 
 interface PayloadSummary {
   bodyLength?: number;
+  payloadSample?: string;
+}
+
+interface WebSocketFrameSummary {
+  frameType: WebSocketFrameType;
+  frameByteLength: number;
   payloadSample?: string;
 }
 
@@ -104,6 +116,101 @@ const emit = (message: PageWorldObservedEventMessage): void => {
   window.postMessage(message, window.location.origin);
 };
 
+const emitWebSocketFrame = (message: PageWorldWebSocketFrameMessage): void => {
+  window.postMessage(message, window.location.origin);
+};
+
+const createReadyMessage = (): PageWorldReadyMessage => ({
+  source: "wireshadow-page",
+  type: "wireshadow-page-ready",
+  payload: {
+    timestamp: new Date().toISOString(),
+    pageUrl: window.location.href
+  }
+});
+
+const emitReady = (): void => {
+  window.postMessage(createReadyMessage(), window.location.origin);
+};
+
+const isMostlyPrintableText = (value: string): boolean => {
+  if (value.length === 0) {
+    return false;
+  }
+  const nonPrintable = Array.from(value).filter((char) => {
+    const code = char.charCodeAt(0);
+    return code < 32 && code !== 9 && code !== 10 && code !== 13;
+  }).length;
+  return nonPrintable / value.length < 0.05;
+};
+
+const summarizeBinarySample = (bytes: Uint8Array): string | undefined => {
+  if (bytes.byteLength === 0) {
+    return undefined;
+  }
+  const decoder = new TextDecoder();
+  const text = decoder.decode(bytes.subarray(0, MAX_SAMPLE_LEN));
+  return isMostlyPrintableText(text) ? truncate(text) : undefined;
+};
+
+const summarizeWebSocketFrame = (data: unknown): WebSocketFrameSummary => {
+  if (typeof data === "string") {
+    const encoder = new TextEncoder();
+    return {
+      frameType: "text",
+      frameByteLength: encoder.encode(data).byteLength,
+      payloadSample: truncate(data)
+    };
+  }
+
+  if (data instanceof ArrayBuffer) {
+    const bytes = new Uint8Array(data);
+    return {
+      frameType: "arraybuffer",
+      frameByteLength: bytes.byteLength,
+      payloadSample: summarizeBinarySample(bytes)
+    };
+  }
+
+  if (ArrayBuffer.isView(data)) {
+    const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    return {
+      frameType: "typed-array",
+      frameByteLength: bytes.byteLength,
+      payloadSample: summarizeBinarySample(bytes)
+    };
+  }
+
+  if (typeof Blob !== "undefined" && data instanceof Blob) {
+    return {
+      frameType: "blob",
+      frameByteLength: data.size
+    };
+  }
+
+  return {
+    frameType: "unknown",
+    frameByteLength: 0
+  };
+};
+
+const createWebSocketFrameMessage = (
+  socketUrl: string,
+  summary: WebSocketFrameSummary
+): PageWorldWebSocketFrameMessage => ({
+  source: "wireshadow-page",
+  type: "wireshadow-websocket-frame",
+  payload: {
+    socketUrl,
+    timestamp: new Date().toISOString(),
+    pageUrl: window.location.href,
+    frameType: summary.frameType,
+    frameByteLength: summary.frameByteLength,
+    payloadSample: summary.payloadSample,
+    initiatorLocation: extractInitiatorLocation()
+  }
+});
+
 const installFetchProbe = (): void => {
   const nativeFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -188,6 +295,12 @@ const installWebSocketProbe = (): void => {
       );
       super(url, protocols);
     }
+
+    send(data: Parameters<WebSocket["send"]>[0]): void {
+      const summary = summarizeWebSocketFrame(data);
+      emitWebSocketFrame(createWebSocketFrameMessage(this.url, summary));
+      super.send(data);
+    }
   }
   window.WebSocket = WireShadowWebSocket;
 };
@@ -211,13 +324,13 @@ const installEventSourceProbe = (): void => {
   window.EventSource = WireShadowEventSource;
 };
 
-export const installPageWorldProbes = (): void => {
+export const installPageWorldProbes = (): boolean => {
   const marker = window as Window & { [WIRESHADOW_PATCHED]?: boolean };
   if (marker[WIRESHADOW_PATCHED]) {
-    return;
+    return true;
   }
   if (typeof window.fetch !== "function" || typeof XMLHttpRequest === "undefined") {
-    return;
+    return false;
   }
   marker[WIRESHADOW_PATCHED] = true;
   installFetchProbe();
@@ -225,6 +338,9 @@ export const installPageWorldProbes = (): void => {
   installSendBeaconProbe();
   installWebSocketProbe();
   installEventSourceProbe();
+  console.info("[WireShadow] page-world probes installed");
+  emitReady();
+  return true;
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {

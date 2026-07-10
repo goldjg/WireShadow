@@ -38,4 +38,71 @@ describe("instrumentation helpers", () => {
     expect(message.payload.method).toBe("PUT");
     expect(message.payload.bodyLength).toBe(9);
   });
+
+  it("emits typed page-ready handshake after probe install", async () => {
+    const postMessage = vi.fn();
+    class FakeXMLHttpRequest {
+      open(): void {}
+      send(): void {}
+    }
+
+    vi.stubGlobal("XMLHttpRequest", FakeXMLHttpRequest);
+    vi.stubGlobal("window", {
+      location: { href: "https://example.com/path", origin: "https://example.com" },
+      fetch: vi.fn(),
+      postMessage,
+      navigator: {}
+    });
+    vi.stubGlobal("document", {});
+
+    const { installPageWorldProbes } = await import("../src/extension/page-world.js");
+    expect(installPageWorldProbes()).toBe(true);
+    expect(
+      postMessage.mock.calls.some(
+        ([message]) => message && typeof message === "object" && message.type === "wireshadow-page-ready"
+      )
+    ).toBe(true);
+  });
+
+  it("emits websocket outbound-frame observations for text and binary sends", async () => {
+    const postMessage = vi.fn();
+    class FakeXMLHttpRequest {
+      open(): void {}
+      send(): void {}
+    }
+    class FakeWebSocket {
+      url: string;
+      constructor(url: string | URL) {
+        this.url = url.toString();
+      }
+      send(_data: unknown): void {}
+    }
+
+    vi.stubGlobal("XMLHttpRequest", FakeXMLHttpRequest);
+    vi.stubGlobal("window", {
+      location: { href: "https://colab.research.google.com/drive/sanitized", origin: "https://colab.research.google.com" },
+      fetch: vi.fn(),
+      postMessage,
+      navigator: {},
+      WebSocket: FakeWebSocket
+    });
+    vi.stubGlobal("document", {});
+
+    const { installPageWorldProbes } = await import("../src/extension/page-world.js");
+    expect(installPageWorldProbes()).toBe(true);
+
+    const socket = new (window as unknown as { WebSocket: typeof FakeWebSocket }).WebSocket(
+      "wss://runtime-sanitized.prod.colab.dev/api/kernels/sanitized-kernel/channels"
+    );
+    socket.send('{"header":{"msg_type":"execute_request"}}');
+    socket.send(new Uint8Array([1, 2, 3, 4]));
+
+    const frameMessages = postMessage.mock.calls
+      .map(([message]) => message)
+      .filter((message) => message && typeof message === "object" && message.type === "wireshadow-websocket-frame");
+
+    expect(frameMessages).toHaveLength(2);
+    expect(frameMessages[0].payload.frameType).toBe("text");
+    expect(frameMessages[1].payload.frameType).toBe("typed-array");
+  });
 });

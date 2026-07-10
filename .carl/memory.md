@@ -28,6 +28,12 @@ Chromium MV3 extension (WireShadow Lite) with safe metadata-only instrumentation
 - Flow is: Page World -> Content Script -> Background Service Worker -> View Models -> Popup.
 - UI surfaces are read-only consumers over the same typed event stream.
 - Current UI surface is popup; dedicated DevTools panel is deferred to a future PR.
+- External page-world script injection must wait for load/error before removal; immediate removal after append can race async execution and suppress instrumentation.
+- Instrumentation state should be explicit via typed readiness/status messages so "no events" is distinguishable from probe-load failure.
+- Child-frame execution can matter for Colab traffic patterns; all-frame instrumentation is baseline with future frame de-duplication hardening.
+- HAR-derived protocol finding: delegated execution intent in Colab is primarily surfaced via outbound Jupyter kernel WebSocket frames (`execute_request`) on `/api/kernels/<id>/channels`.
+- Colab LSP WebSocket messages (`textDocument/didOpen` / `didChange`) are notebook-content/edit signals only and should not independently trigger execution semantics.
+- Drive autosave multipart PUT requests are secondary notebook-content evidence, not primary execution trigger.
 
 ### First semantic recogniser (Google Colab)
 - Colab recogniser passively detects notebook document markers, notebook edit signals, cell-type indicators, and execution intent markers.

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { isColabUrl, recogniseColabSignals } from "../src/recognisers/colab.js";
+import { isColabUrl, recogniseColabWebSocketFrame, recogniseColabSignals } from "../src/recognisers/colab.js";
+import {
+  COLAB_KERNEL_SOCKET_URL,
+  COLAB_LSP_SOCKET_URL,
+  JUPYTER_EXECUTE_REQUEST_EMPTY_CODE,
+  JUPYTER_EXECUTE_REQUEST_WITH_CODE,
+  JUPYTER_STATUS_MESSAGE,
+  LSP_DID_OPEN_MESSAGE,
+  MALFORMED_JSON_FRAME
+} from "./fixtures/colab-websocket-fixtures.js";
 
 describe("colab recogniser", () => {
   it("identifies Google Colab URLs", () => {
@@ -46,5 +55,52 @@ describe("colab recogniser", () => {
     expect(result.signals.markdownCell).toBe(true);
     expect(result.signals.notebookMetadata).toBe(true);
     expect(result.signals.isNotebookDocument).toBe(true);
+  });
+
+  it("recognises execute_request with non-empty code as delegated execution signal", () => {
+    const result = recogniseColabWebSocketFrame(
+      COLAB_KERNEL_SOCKET_URL,
+      JUPYTER_EXECUTE_REQUEST_WITH_CODE,
+      "https://colab.research.google.com/drive/sanitized"
+    );
+    expect(result.executeRequestObserved).toBe(true);
+    expect(result.executeRequestHasCode).toBe(true);
+    expect(result.detectedCapabilities).toEqual(
+      expect.arrayContaining(["requests", "api.github.com", "http-method-intent"])
+    );
+    expect(result.trustBoundaryCrossings).toContain("managed-runtime->external-egress-potential");
+  });
+
+  it("does not produce execution semantic event for execute_request with empty code", () => {
+    const result = recogniseColabWebSocketFrame(COLAB_KERNEL_SOCKET_URL, JUPYTER_EXECUTE_REQUEST_EMPTY_CODE);
+    expect(result.executeRequestObserved).toBe(true);
+    expect(result.executeRequestHasCode).toBe(false);
+    expect(result.detectedCapabilities).toHaveLength(0);
+  });
+
+  it("recognises non-execution jupyter status message without execution event", () => {
+    const result = recogniseColabWebSocketFrame(COLAB_KERNEL_SOCKET_URL, JUPYTER_STATUS_MESSAGE);
+    expect(result.messageType).toBe("status");
+    expect(result.executeRequestObserved).toBe(false);
+    expect(result.executeRequestHasCode).toBe(false);
+  });
+
+  it("recognises LSP didOpen messages as notebook content signal only", () => {
+    const result = recogniseColabWebSocketFrame(COLAB_LSP_SOCKET_URL, LSP_DID_OPEN_MESSAGE);
+    expect(result.isLspSocket).toBe(true);
+    expect(result.notebookContentSignal).toBe(true);
+    expect(result.executeRequestObserved).toBe(false);
+  });
+
+  it("handles malformed JSON frame safely", () => {
+    const result = recogniseColabWebSocketFrame(COLAB_KERNEL_SOCKET_URL, MALFORMED_JSON_FRAME);
+    expect(result.executeRequestObserved).toBe(false);
+    expect(result.executeRequestHasCode).toBe(false);
+  });
+
+  it("handles binary frame metadata safely", () => {
+    const result = recogniseColabWebSocketFrame(COLAB_KERNEL_SOCKET_URL);
+    expect(result.isColabRuntimeSocket).toBe(true);
+    expect(result.executeRequestObserved).toBe(false);
   });
 });

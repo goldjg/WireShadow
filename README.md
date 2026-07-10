@@ -23,6 +23,8 @@ WireShadow now includes a first Colab semantic recogniser that emits:
 - lightweight additive risk scoring with explicit factors
 - detected outbound capability classes (networking libraries, external execution helpers, GitHub/cloud targets)
 
+Colab execution intent is primarily recognised from outbound Jupyter WebSocket `execute_request` frames (kernel channels), while Colab LSP WebSocket messages are treated as notebook-content/edit signals only.
+
 ## SPADE origin and Colab poster-child scenario
 
 SPADE means **Side-channel Platform Abuse and Data Exfiltration**.
@@ -157,12 +159,21 @@ npm run build
 npm test
 ```
 
+Browser-level extension pipeline integration test (optional, requires local browser runtime support):
+
+```powershell
+$env:WIRESHADOW_E2E=1
+npm test
+```
+
 ## Load unpacked extension (developer mode)
 
 1. Run `npm run build`.
-2. Open `chrome://extensions`.
+2. Open `chrome://extensions` (or `edge://extensions`).
 3. Enable Developer Mode.
 4. Select **Load unpacked**.
-5. Choose the project root and point to the generated extension assets as required by your local bundling flow.
+5. Choose `dist/extension` from this repository.
 
 This bootstrap is intentionally lightweight and is a foundation for follow-on implementation.
+
+The popup now includes a compact sensor status card so an empty event table is distinguishable from instrumentation or bridge failures.

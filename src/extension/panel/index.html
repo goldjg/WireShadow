@@ -59,6 +59,7 @@
       <h1>WireShadow Lite</h1>
       <p class="muted">Passive delegated-execution observability stream (newest first).</p>
 
+      <section id="sensor-status" class="card"></section>
       <section id="semantic-overview" class="card"></section>
 
       <table>
@@ -77,11 +78,60 @@
     </main>
     <script>
       const getRuntime = () => globalThis.chrome && globalThis.chrome.runtime;
+      const getTabsApi = () => globalThis.chrome && globalThis.chrome.tabs;
       const escapeHtml = (value) =>
         String(value ?? "")
           .replaceAll("&", "&amp;")
           .replaceAll("<", "&lt;")
           .replaceAll(">", "&gt;");
+
+      const toTitleCase = (value) => `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+
+      const isTabSupported = (tab) => /^https?:\/\//.test(String(tab?.url ?? ""));
+
+      const getCurrentTab = async () => {
+        const tabs = getTabsApi();
+        if (!tabs?.query) {
+          return undefined;
+        }
+        return new Promise((resolve) => {
+          tabs.query({ active: true, currentWindow: true }, (results) => {
+            resolve(Array.isArray(results) ? results[0] : undefined);
+          });
+        });
+      };
+
+      const renderSensorStatus = (diagnostics, tabSupported) => {
+        const container = document.getElementById("sensor-status");
+        if (!container) return;
+        const status = diagnostics ?? {
+          pageInstrumentation: "unknown",
+          contentBridge: "unavailable",
+          backgroundObserver: "active",
+          eventsObserved: 0,
+          websocketConnectionsObserved: 0,
+          websocketOutboundFramesObserved: 0,
+          jupyterExecutionRequestsObserved: 0,
+          recogniserState: "inactive"
+        };
+
+        container.innerHTML = `
+          <div><strong>Page instrumentation:</strong> ${escapeHtml(toTitleCase(status.pageInstrumentation))}</div>
+          <div><strong>Content bridge:</strong> ${escapeHtml(toTitleCase(status.contentBridge))}</div>
+          <div><strong>Background observer:</strong> ${escapeHtml(toTitleCase(status.backgroundObserver))}</div>
+          <div><strong>Events observed:</strong> ${escapeHtml(status.eventsObserved)}</div>
+          <div><strong>WebSocket connections observed:</strong> ${escapeHtml(status.websocketConnectionsObserved)}</div>
+          <div><strong>WebSocket outbound frames observed:</strong> ${escapeHtml(
+            status.websocketOutboundFramesObserved
+          )}</div>
+          <div><strong>Jupyter execution requests observed:</strong> ${escapeHtml(
+            status.jupyterExecutionRequestsObserved
+          )}</div>
+          <div><strong>Recogniser state:</strong> ${escapeHtml(toTitleCase(status.recogniserState))}</div>
+          <div><strong>Last semantic event:</strong> ${escapeHtml(status.lastSemanticEvent ?? "none")}</div>
+          <div><strong>Current tab supported:</strong> ${tabSupported ? "Yes" : "No"}</div>
+        `;
+      };
 
       const renderOverview = (event) => {
         const container = document.getElementById("semantic-overview");
@@ -130,9 +180,12 @@
         `;
       };
 
-      const render = (events) => {
+      const render = (events, diagnostics, tabSupported) => {
         const body = document.getElementById("events-body");
         if (!body) return;
+
+        renderSensorStatus(diagnostics, tabSupported);
+
         if (!Array.isArray(events) || events.length === 0) {
           renderOverview(undefined);
           body.innerHTML = '<tr><td colspan="6" class="muted">No events observed yet.</td></tr>';
@@ -156,11 +209,18 @@
           .join("");
       };
 
-      const refresh = () => {
+      const refresh = async () => {
         const runtime = getRuntime();
-        if (!runtime?.sendMessage) return;
-        runtime.sendMessage({ type: "wireshadow-panel-get-events" }, (response) => {
-          render(response?.payload?.events ?? []);
+        const currentTab = await getCurrentTab();
+        const supported = isTabSupported(currentTab);
+
+        if (!runtime?.sendMessage) {
+          render([], undefined, supported);
+          return;
+        }
+
+        runtime.sendMessage({ type: "wireshadow-panel-get-events", tabId: currentTab?.id }, (response) => {
+          render(response?.payload?.events ?? [], response?.payload?.diagnostics, supported);
         });
       };
 

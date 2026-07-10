@@ -15,6 +15,13 @@ active
 
 ## Approved scope
 - Preserve the existing passive instrumentation pipeline and extend it with Colab semantic analysis.
+- Fix deterministic page-world injection timing and guard against duplicate injection.
+- Add typed page-ready/runtime status handshake so instrumentation health is observable.
+- Add popup diagnostics for instrumentation status, bridge state, event count, and tab support.
+- Add WebSocket outbound frame observation with typed message variants and bounded frame metadata.
+- Add Jupyter protocol recognition for kernel `execute_request` semantics and LSP edit-only signals.
+- Treat Drive multipart autosave as secondary evidence, not execution trigger.
+- Include all-frame content script execution support for child-frame network activity.
 - Recognise Colab page, notebook document indicators, notebook cell edits, notebook execution, executable Python cell creation, Markdown cell creation, and notebook metadata hints.
 - Expand semantic classifier patterns for Python networking, external execution, GitHub, cloud storage, HTTP method intent, embedded blobs/base64, and secret-like markers.
 - Introduce a generic `DelegatedExecutionEvent` model including platform, confidence, trigger, execution language, outbound capability, embedded data, and trust-boundary crossing.
@@ -48,6 +55,10 @@ active
 - `src/core/semantic.ts`
 - `src/recognisers/colab.ts`
 - `src/extension/background.ts`
+- `src/extension/content-script.ts`
+- `src/extension/contracts.ts`
+- `src/extension/page-world.ts`
+- `src/extension/manifest.json`
 - `src/extension/panel/index.html`
 - `tests/*.test.ts`
 - `README.md`
@@ -62,3 +73,9 @@ active
 - `carl harness sync`
 - `carl map`
 - `carl doctor`
+
+## Field root cause and evidence
+- Root cause: `src/extension/content-script.ts` removed injected `page-world.js` immediately after append, risking cancellation before async external script execution.
+- HAR-derived protocol finding: Colab execution requests are observed over kernel channel WebSocket frames (`/api/kernels/<id>/channels`) and notebook-edit signals over Colab LSP WebSocket frames (`/colab/lsp`); Drive autosave PUT bodies are secondary evidence only.
+- Evidence: `npm run build` passes with deterministic extension bundle output; `npm test` is blocked by local Node runtime mismatch for Vitest startup (`node:util styleText` export); `carl` commands are blocked because CLI is unavailable in this environment.
+- Remaining Colab limitation: live interactive Colab validation and frame-aware de-duplication heuristics remain future hardening work.

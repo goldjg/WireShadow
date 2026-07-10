@@ -61,6 +61,14 @@ WireShadow originated from SPADE research (**Side-channel Platform Abuse and Dat
 - Browser-observed intent does not equal observed downstream runtime egress.
 - WireShadow surfaces intent markers and risk semantics at the browser-side boundary.
 
+## Durable field findings
+- External page-world script injection must be load/event-driven; removing the script node immediately after append can race async execution and silently disable instrumentation.
+- Instrumentation health requires explicit typed handshake (`wireshadow-page-ready`) plus runtime status propagation, otherwise "no events" cannot be distinguished from probe-load failure.
+- Colab can execute network activity from child frames; baseline instrumentation should run in all frames, with frame-aware de-duplication as a follow-on refinement.
+- HAR-derived Colab protocol truth: delegated execution intent is primarily visible in outbound Jupyter kernel WebSocket frames (`execute_request` on `/api/kernels/<id>/channels`), not only in fetch/XHR.
+- Colab LSP WebSocket traffic (`textDocument/didOpen`/`didChange` on `/colab/lsp`) is useful as notebook-content/edit signal but must not be treated as execution trigger.
+- Drive multipart autosave requests may contain notebook content but should remain secondary evidence relative to kernel WebSocket execution messages.
+
 ## Canonical validation commands
 - `npm run build`
 - `npm test`

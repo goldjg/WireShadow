@@ -169,9 +169,54 @@ export interface PageWorldObservedEventMessage {
   payload: PageWorldObservedPayload;
 }
 
+export type WebSocketFrameType = "text" | "arraybuffer" | "typed-array" | "blob" | "unknown";
+
+export interface PageWorldWebSocketFramePayload {
+  socketUrl: string;
+  timestamp: string;
+  pageUrl: string;
+  frameType: WebSocketFrameType;
+  frameByteLength: number;
+  payloadSample?: string;
+  initiatorLocation?: string;
+}
+
+export interface PageWorldWebSocketFrameMessage {
+  source: "wireshadow-page";
+  type: "wireshadow-websocket-frame";
+  payload: PageWorldWebSocketFramePayload;
+}
+
+export interface PageWorldReadyMessage {
+  source: "wireshadow-page";
+  type: "wireshadow-page-ready";
+  payload: {
+    timestamp: string;
+    pageUrl: string;
+  };
+}
+
 export interface RuntimeObservedEventMessage {
   type: "wireshadow-observed-event";
   payload: PageWorldObservedPayload;
+}
+
+export interface RuntimeWebSocketFrameMessage {
+  type: "wireshadow-websocket-frame";
+  payload: PageWorldWebSocketFramePayload;
+}
+
+export type InstrumentationState = "active" | "failed" | "unknown";
+
+export interface RuntimeContentStatusMessage {
+  type: "wireshadow-content-status";
+  payload: {
+    pageInstrumentation: InstrumentationState;
+    contentBridgeReady: boolean;
+    timestamp: string;
+    pageUrl?: string;
+    reason?: string;
+  };
 }
 
 export interface PanelGetEventsMessage {
@@ -179,12 +224,29 @@ export interface PanelGetEventsMessage {
   tabId?: number;
 }
 
+export interface ObserverDiagnostics {
+  pageInstrumentation: InstrumentationState;
+  contentBridge: "active" | "unavailable";
+  backgroundObserver: "active";
+  eventsObserved: number;
+  websocketConnectionsObserved: number;
+  websocketOutboundFramesObserved: number;
+  jupyterExecutionRequestsObserved: number;
+  recogniserState: "active" | "inactive";
+  lastSemanticEvent?: string;
+}
+
 export interface PanelEventsMessage {
   type: "wireshadow-panel-events";
   payload: {
     events: ObservedEvent[];
+    diagnostics: ObserverDiagnostics;
   };
 }
 
-export type ExtensionInboundMessage = RuntimeObservedEventMessage | PanelGetEventsMessage;
+export type ExtensionInboundMessage =
+  | RuntimeObservedEventMessage
+  | RuntimeWebSocketFrameMessage
+  | RuntimeContentStatusMessage
+  | PanelGetEventsMessage;
 export type ExtensionOutboundMessage = PanelEventsMessage;

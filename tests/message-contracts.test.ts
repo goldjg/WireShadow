@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  isPageWorldReadyMessage,
   isPageWorldObservedEventMessage,
+  isPageWorldWebSocketFrameMessage,
   isPanelGetEventsMessage,
+  isRuntimeContentStatusMessage,
   isRuntimeObservedEventMessage,
-  toRuntimeObservedEventMessage
+  isRuntimeWebSocketFrameMessage,
+  toRuntimeContentStatusMessage,
+  toRuntimeObservedEventMessage,
+  toRuntimeWebSocketFrameMessage
 } from "../src/extension/contracts.js";
 
 describe("message contracts", () => {
@@ -35,5 +41,47 @@ describe("message contracts", () => {
 
   it("accepts panel query message", () => {
     expect(isPanelGetEventsMessage({ type: "wireshadow-panel-get-events" })).toBe(true);
+  });
+
+  it("accepts typed page-ready handshake", () => {
+    expect(
+      isPageWorldReadyMessage({
+        source: "wireshadow-page",
+        type: "wireshadow-page-ready",
+        payload: {
+          timestamp: new Date().toISOString(),
+          pageUrl: "https://example.com"
+        }
+      })
+    ).toBe(true);
+  });
+
+  it("accepts typed content status message", () => {
+    const statusMessage = toRuntimeContentStatusMessage({
+      pageInstrumentation: "active",
+      contentBridgeReady: true,
+      timestamp: new Date().toISOString(),
+      pageUrl: "https://example.com"
+    });
+    expect(isRuntimeContentStatusMessage(statusMessage)).toBe(true);
+  });
+
+  it("accepts typed websocket frame messages", () => {
+    const frameMessage = {
+      source: "wireshadow-page",
+      type: "wireshadow-websocket-frame",
+      payload: {
+        socketUrl: "wss://runtime.prod.colab.dev/api/kernels/abc/channels",
+        timestamp: new Date().toISOString(),
+        pageUrl: "https://colab.research.google.com/drive/abc",
+        frameType: "text",
+        frameByteLength: 120,
+        payloadSample: "{\"header\":{\"msg_type\":\"execute_request\"}}"
+      }
+    } as const;
+
+    expect(isPageWorldWebSocketFrameMessage(frameMessage)).toBe(true);
+    const runtimeFrame = toRuntimeWebSocketFrameMessage(frameMessage);
+    expect(isRuntimeWebSocketFrameMessage(runtimeFrame)).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-<!-- version: 1.1.0 -->
+<!-- version: 1.3.0 -->
 # Current PR Contract
 
 ## Goal
@@ -21,6 +21,13 @@ active
 
 ## Approved scope
 - Extend the existing passive extension pipeline with Colab semantic recogniser outputs.
+- Fix deterministic page-world probe injection so external script removal never races async execution.
+- Add typed page-world readiness handshake and background-recorded instrumentation status.
+- Add popup diagnostic sensor state for instrumentation/bridge/observer/tab support/event counts.
+- Add WebSocket outbound frame observation and typed frame events for Colab kernel/lsp channels.
+- Add Jupyter protocol semantic recognition for `execute_request` and LSP edit signals.
+- Treat Drive multipart autosave as secondary evidence, not execution trigger.
+- Support child-frame content script execution where host pages execute network calls in iframes.
 - Detect Colab page/notebook indicators, notebook cell edits, notebook execution markers, executable Python cell creation, Markdown cell creation, and notebook metadata hints.
 - Expand semantic pattern detection for networking libraries, external execution commands, GitHub targets, cloud storage targets, HTTP method intent, base64/blob markers, and token-like indicators.
 - Introduce a generic `DelegatedExecutionEvent` model with platform, confidence, trigger, language, outbound capability, embedded data, and trust-boundary-crossed fields.
@@ -56,6 +63,10 @@ active
 - `src/core/**`
 - `src/recognisers/**`
 - `src/extension/background.ts`
+- `src/extension/content-script.ts`
+- `src/extension/contracts.ts`
+- `src/extension/page-world.ts`
+- `src/extension/manifest.json`
 - `src/extension/panel/index.html`
 - `tests/**`
 
@@ -65,6 +76,17 @@ active
 - `carl harness sync`
 - `carl map`
 - `carl doctor`
+
+## Field root cause and evidence
+- Root cause: `content-script.ts` appended `page-world.js` then removed the element immediately, creating a race where async external script execution could be cancelled before probe installation.
+- Fix approach: script now remains attached until `load`/`error`, uses durable DOM marker guards, and emits typed status updates (`wireshadow-page-ready` handshake + runtime content status).
+- HAR-derived protocol finding: Colab delegated execution is primarily emitted over Jupyter kernel WebSocket frames (`/api/kernels/<id>/channels`) with outbound `execute_request` messages, while LSP WebSocket messages (`/colab/lsp`) provide notebook-content/edit signals. Drive multipart autosave is treated as secondary evidence.
+- WebSocket semantic approach: outbound `WebSocket.send()` frames are observed with bounded metadata, JSON-safe parsing is applied for text frames, and only non-empty `execute_request` code contributes execution semantics.
+- Validation evidence in this session:
+  - `npm run build`: passed.
+  - `npm test`: blocked by local runtime mismatch (`node:util styleText` export missing in current Node runtime).
+  - `carl harness sync`, `carl map`, `carl doctor`: blocked because `carl` CLI is unavailable in the execution environment.
+- Remaining Colab-specific limitation: live Colab browser validation and per-frame de-duplication tuning remain follow-on tasks; this environment cannot execute interactive extension validation against live Colab.
 
 ## Stop conditions
 - Requested behavior requires active interference with notebook/runtime behavior.
