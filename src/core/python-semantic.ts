@@ -247,6 +247,7 @@ const parseParams = (raw: string): string[] =>
     .map((chunk) => chunk.trim())
     .filter(Boolean)
     .map((chunk) => chunk.split("=")[0]?.trim() ?? "")
+    .map((chunk) => chunk.split(":")[0]?.trim() ?? "")
     .map((chunk) => chunk.replace(/^\*+/, ""))
     .filter(Boolean);
 

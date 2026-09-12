@@ -1,5 +1,6 @@
 import type {
   DelegatedExecutionEvent,
+  DelegatedExecutionPlatform,
   RiskScore,
   RiskScoreFactor,
   TrustBoundaryTimelineEvent
@@ -67,15 +68,19 @@ export const computeDelegatedRiskScore = (inputs: DelegatedRiskInputs): RiskScor
   };
 };
 
-export const buildTrustBoundaryTimeline = (inputs: DelegatedRiskInputs): TrustBoundaryTimelineEvent[] => {
+export const buildTrustBoundaryTimeline = (
+  inputs: DelegatedRiskInputs,
+  options?: { platformLabel?: string }
+): TrustBoundaryTimelineEvent[] => {
   const timeline: TrustBoundaryTimelineEvent[] = [];
+  const platformLabel = options?.platformLabel ?? "Google Colab";
   let step = 1;
 
   if (inputs.notebookEdited) {
     timeline.push({
       step: step++,
       title: "User edited notebook",
-      details: "Notebook-edit indicators were observed in Colab content."
+      details: `Notebook-edit indicators were observed in ${platformLabel} content.`
     });
   }
 
@@ -114,7 +119,7 @@ export const buildTrustBoundaryTimeline = (inputs: DelegatedRiskInputs): TrustBo
   timeline.push({
     step: step++,
     title: "Browser -> SaaS control plane",
-    details: "Browser observed execution request sent to Colab control-plane endpoint."
+    details: `Browser observed execution request sent to ${platformLabel} control-plane endpoint.`
   });
   timeline.push({
     step: step++,
@@ -137,9 +142,10 @@ export const buildDelegatedExecutionEvent = (
   options?: {
     knownSymbolInvoked?: string;
     inheritedCapabilities?: string[];
+    executionPlatform?: DelegatedExecutionPlatform;
   }
 ): DelegatedExecutionEvent => ({
-  executionPlatform: "google-colab",
+  executionPlatform: options?.executionPlatform ?? "google-colab",
   confidence,
   trigger,
   executionLanguage: "python",

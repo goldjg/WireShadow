@@ -12,7 +12,11 @@ import {
   buildTrustBoundaryTimeline,
   computeDelegatedRiskScore
 } from "../core/semantic.js";
-import { recogniseColabSignals, recogniseColabWebSocketFrame } from "../recognisers/colab.js";
+import {
+  recogniseColabSignals,
+  recogniseJupyterSaasWebSocketFrame
+} from "../recognisers/colab.js";
+import { jupyterPlatformLabel } from "../recognisers/jupyter-saas.js";
 import type {
   ClassificationCategory,
   InstrumentationState,
@@ -336,7 +340,7 @@ const buildDefaultEvidenceSummary = (): CorrelatedEvidence[] => [
 
 export const applyWebSocketSemanticToTabState = (
   state: TabObserverState,
-  semantic: ReturnType<typeof recogniseColabWebSocketFrame>,
+  semantic: ReturnType<typeof recogniseJupyterSaasWebSocketFrame>,
   observedAt: string,
   frameType: RuntimeWebSocketFrameMessage["payload"]["frameType"],
   frameByteLength: number,
@@ -351,7 +355,7 @@ export const applyWebSocketSemanticToTabState = (
       state.textWebSocketFramesObserved + (frameType === "text" ? 1 : 0),
     binaryWebSocketFramesObserved:
       state.binaryWebSocketFramesObserved + (frameType === "arraybuffer" || frameType === "typed-array" ? 1 : 0),
-    recogniserState: semantic.isColabRuntimeSocket ? "active" : state.recogniserState,
+    recogniserState: semantic.isRecognisedRuntimeSocket ? "active" : state.recogniserState,
     updatedAt: observedAt,
     latestFrameByteLength: frameByteLength,
     latestDisplaySampleLength: displaySampleLength,
@@ -400,7 +404,7 @@ const ingestObservedMessage = (message: RuntimeObservedEventMessage, sender: Run
   const destination = parseDestination(message.payload.url, message.payload.pageUrl);
   const riskScore = computeDelegatedRiskScore(recogniser.signals);
   const timeline = buildTrustBoundaryTimeline(recogniser.signals);
-  const delegatedExecutionEvent = recogniser.isColab
+  const delegatedExecutionEvent = recogniser.isColab && recogniser.signals.notebookExecuted
     ? buildDelegatedExecutionEvent(recogniser.trigger, recogniser.confidence, recogniser.signals)
     : undefined;
 
@@ -454,7 +458,7 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
   const observedAt = message.payload.timestamp;
   const destination = parseDestination(message.payload.socketUrl, message.payload.pageUrl);
   const semanticInput = message.payload.analysisFrameText;
-  const wsSemantic = recogniseColabWebSocketFrame(
+  const wsSemantic = recogniseJupyterSaasWebSocketFrame(
     message.payload.socketUrl,
     semanticInput,
     message.payload.pageUrl,
@@ -516,11 +520,15 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
       : undefined;
 
   const riskScore = correlatedInputs ? computeDelegatedRiskScore(correlatedInputs) : undefined;
-  const timeline = correlatedInputs ? buildTrustBoundaryTimeline(correlatedInputs) : [];
+  const platformLabel = jupyterPlatformLabel(wsSemantic.executionPlatform);
+  const timeline = correlatedInputs
+    ? buildTrustBoundaryTimeline(correlatedInputs, { platformLabel })
+    : [];
   const delegatedExecutionEvent = correlatedInputs
     ? buildDelegatedExecutionEvent("jupyter-execute-request", wsSemantic.confidence, correlatedInputs, {
         knownSymbolInvoked: invocation?.knownSymbolInvoked,
-        inheritedCapabilities: invocation?.inheritedCapabilities
+        inheritedCapabilities: invocation?.inheritedCapabilities,
+        executionPlatform: wsSemantic.executionPlatform
       })
     : undefined;
 
@@ -576,7 +584,7 @@ const ingestWebSocketFrameMessage = (message: RuntimeWebSocketFrameMessage, send
         boundaryId: "browser-to-saas-control-plane",
         boundaryType: "saas-control-plane",
         direction: "out-of",
-        details: "Browser-observed WebSocket frame sent to Colab control plane."
+        details: `Browser-observed WebSocket frame sent to ${platformLabel} control plane.`
       },
       ...(wsSemantic.executeRequestHasCode
         ? [

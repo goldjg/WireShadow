@@ -186,7 +186,7 @@ var GIST_API_RE = /\bhttps?:\/\/api\.github\.com\/gists\b|\bgist\.github\.com\b/
 var PYGITHUB_RE = /\bPyGithub\b/i;
 var CLOUD_STORAGE_RE = /\b(?:drive\.google\.com|google drive|dropbox|onedrive|s3(?:\.amazonaws\.com)?|blob\.core\.windows\.net|azure\.blob)\b/i;
 var HTTP_METHOD_RE = /\b(?:GET|POST|PUT|PATCH|DELETE)\b/;
-var NOTEBOOK_METADATA_RE = /\b(?:metadata|kernelspec|language_info|google\.colab)\b/i;
+var NOTEBOOK_METADATA_RE = /\b(?:metadata|kernelspec|language_info|notebook[_-]?id|google\.colab)\b/i;
 var TRANSPORT_METADATA_KEY_RE = /\b(?:runtime|session|kernel|notebook|proxy|transport|channel)[_-]?(?:id|token|host|name)?\b/i;
 var COLAB_RUNTIME_HOST_RE = /\.prod\.colab\.dev$/i;
 var extractMatches = (input, pattern) => Array.from(input.matchAll(pattern)).map((m) => m[0]);
@@ -198,7 +198,7 @@ var looksLikeRuntimeTransportMetadata = (token, input) => {
   UUID_RE.lastIndex = 0;
   const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const tokenContextRe = new RegExp(
-    `(?:${TRANSPORT_METADATA_KEY_RE.source})\\s*[:=]\\s*["']?${escaped}["']?`,
+    `(?:${TRANSPORT_METADATA_KEY_RE.source})["']?\\s*[:=]\\s*["']?${escaped}["']?`,
     "i"
   );
   if (tokenContextRe.test(input)) {
@@ -455,7 +455,7 @@ var detectDestinations = (value) => {
   const matches = value.match(/https?:\/\/[^\s'"<>]+/g) ?? [];
   return Array.from(new Set(matches.slice(0, 8).map((url) => redactValue("url", url).hash)));
 };
-var parseParams = (raw) => raw.split(",").map((chunk) => chunk.trim()).filter(Boolean).map((chunk) => chunk.split("=")[0]?.trim() ?? "").map((chunk) => chunk.replace(/^\*+/, "")).filter(Boolean);
+var parseParams = (raw) => raw.split(",").map((chunk) => chunk.trim()).filter(Boolean).map((chunk) => chunk.split("=")[0]?.trim() ?? "").map((chunk) => chunk.split(":")[0]?.trim() ?? "").map((chunk) => chunk.replace(/^\*+/, "")).filter(Boolean);
 var parseImports = (line) => {
   const aliases = {};
   const imports = [];
@@ -1165,14 +1165,15 @@ var computeDelegatedRiskScore = (inputs) => {
     factors
   };
 };
-var buildTrustBoundaryTimeline = (inputs) => {
+var buildTrustBoundaryTimeline = (inputs, options) => {
   const timeline = [];
+  const platformLabel = options?.platformLabel ?? "Google Colab";
   let step = 1;
   if (inputs.notebookEdited) {
     timeline.push({
       step: step++,
       title: "User edited notebook",
-      details: "Notebook-edit indicators were observed in Colab content."
+      details: `Notebook-edit indicators were observed in ${platformLabel} content.`
     });
   }
   if (inputs.knownOutboundSymbolInvoked) {
@@ -1206,7 +1207,7 @@ var buildTrustBoundaryTimeline = (inputs) => {
   timeline.push({
     step: step++,
     title: "Browser -> SaaS control plane",
-    details: "Browser observed execution request sent to Colab control-plane endpoint."
+    details: `Browser observed execution request sent to ${platformLabel} control-plane endpoint.`
   });
   timeline.push({
     step: step++,
@@ -1221,7 +1222,7 @@ var buildTrustBoundaryTimeline = (inputs) => {
   return timeline;
 };
 var buildDelegatedExecutionEvent = (trigger, confidence, inputs, options) => ({
-  executionPlatform: "google-colab",
+  executionPlatform: options?.executionPlatform ?? "google-colab",
   confidence,
   trigger,
   executionLanguage: "python",
@@ -1233,8 +1234,178 @@ var buildDelegatedExecutionEvent = (trigger, confidence, inputs, options) => ({
   inheritedCapabilities: options?.inheritedCapabilities
 });
 
+// src/core/jupyter-protocol.ts
+var MAX_WS_FRAME_PARSE_CHARS = 256 * 1024;
+var MAX_WS_PARSE_DEPTH = 5;
+var MAX_WS_PARSE_NODES = 80;
+var MAX_NESTED_JSON_STRING_CHARS = 128 * 1024;
+var toRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : void 0;
+var getString = (value, key) => {
+  const candidate = toRecord(value)?.[key];
+  return typeof candidate === "string" ? candidate : void 0;
+};
+var parseJsonCandidate = (raw) => {
+  const safe = raw.trim();
+  if (safe.length > MAX_WS_FRAME_PARSE_CHARS) {
+    return { prefixed: false, failureReason: "frame-too-large" };
+  }
+  if (safe.length === 0) {
+    return { prefixed: false };
+  }
+  try {
+    return { value: JSON.parse(safe), prefixed: false };
+  } catch {
+    const firstJsonChar = safe.search(/[\[{]/);
+    if (firstJsonChar <= 0) {
+      return { prefixed: false, failureReason: "invalid-json" };
+    }
+    try {
+      return { value: JSON.parse(safe.slice(firstJsonChar)), prefixed: true };
+    } catch {
+      return { prefixed: true, failureReason: "invalid-json" };
+    }
+  }
+};
+var asParseShape = (nestedOrWrapped, shape) => {
+  if (!nestedOrWrapped && shape.size === 0) return "direct";
+  if (shape.has("nested") && shape.has("array")) return "nested+array";
+  if (shape.has("nested") && shape.has("stringified")) return "nested+stringified";
+  if (shape.has("nested") && shape.has("prefixed")) return "nested+prefixed";
+  if (shape.has("array")) return "array";
+  if (shape.has("stringified")) return "stringified";
+  if (shape.has("prefixed")) return "prefixed";
+  if (shape.has("nested")) return "nested";
+  return "none";
+};
+var extractJupyterFrame = (sample) => {
+  const top = parseJsonCandidate(sample);
+  if (typeof top.value === "undefined") {
+    return { failureReason: top.failureReason ?? "unknown" };
+  }
+  const queue = [{
+    value: top.value,
+    depth: 0,
+    shape: new Set(top.prefixed ? ["prefixed"] : [])
+  }];
+  let visited = 0;
+  while (queue.length > 0 && visited < MAX_WS_PARSE_NODES) {
+    const node = queue.shift();
+    if (!node) break;
+    visited += 1;
+    if (node.depth > MAX_WS_PARSE_DEPTH) continue;
+    const record = toRecord(node.value);
+    if (record) {
+      const messageType = getString(record.header, "msg_type") ?? getString(record, "method");
+      if (messageType) {
+        return {
+          frame: {
+            messageType,
+            content: toRecord(record.content),
+            parentHeader: toRecord(record.parent_header),
+            nestedOrWrapped: node.depth > 0 || node.shape.size > 0,
+            parseShape: asParseShape(node.depth > 0 || node.shape.size > 0, node.shape)
+          }
+        };
+      }
+      for (const value of Object.values(record)) {
+        if (typeof value === "string" && value.length <= MAX_NESTED_JSON_STRING_CHARS) {
+          const nested = parseJsonCandidate(value);
+          if (typeof nested.value !== "undefined") {
+            queue.push({
+              value: nested.value,
+              depth: node.depth + 1,
+              shape: /* @__PURE__ */ new Set([
+                ...node.shape,
+                "nested",
+                "stringified",
+                ...nested.prefixed ? ["prefixed"] : []
+              ])
+            });
+            continue;
+          }
+        }
+        if (typeof value === "object" && value !== null) {
+          queue.push({ value, depth: node.depth + 1, shape: /* @__PURE__ */ new Set([...node.shape, "nested"]) });
+        }
+      }
+    }
+    if (Array.isArray(node.value)) {
+      for (const item of node.value) {
+        queue.push({ value: item, depth: node.depth + 1, shape: /* @__PURE__ */ new Set([...node.shape, "array"]) });
+      }
+    }
+  }
+  return { failureReason: "unsupported-envelope" };
+};
+var buildObservation = (sample, frameType, extracted) => {
+  const topParse = parseJsonCandidate(sample);
+  const topRecord = toRecord(topParse.value);
+  const topLevelKeys = topRecord ? Object.keys(topRecord).slice(0, 20) : [];
+  const codeValue = extracted?.content?.code;
+  const codeLength = typeof codeValue === "string" ? codeValue.length : typeof codeValue === "number" || typeof codeValue === "boolean" ? String(codeValue).length : 0;
+  return {
+    topLevelKeys,
+    headerMsgType: extracted?.messageType,
+    parentHeaderMsgIdPresent: typeof extracted?.parentHeader?.msg_id === "string",
+    contentKeys: extracted?.content ? Object.keys(extracted.content).slice(0, 20) : [],
+    contentCodeExists: Object.prototype.hasOwnProperty.call(extracted?.content ?? {}, "code"),
+    codeType: typeof codeValue === "undefined" ? "undefined" : Array.isArray(codeValue) ? "array" : typeof codeValue,
+    codeLength,
+    frameEncoding: frameType,
+    nestedOrWrapped: extracted?.nestedOrWrapped ?? false,
+    parseShape: extracted?.parseShape ?? (topParse.prefixed ? "prefixed" : topLevelKeys.length > 0 ? "direct" : "none")
+  };
+};
+var parseJupyterFrame = (sample, frameType = "unknown") => {
+  const extracted = extractJupyterFrame(sample);
+  return {
+    frame: extracted.frame,
+    observation: buildObservation(sample, frameType, extracted.frame),
+    failureReason: extracted.failureReason
+  };
+};
+
+// src/recognisers/jupyter-saas.ts
+var KERNEL_CHANNELS_PATH_RE = /\/api\/kernels\/[^/]+\/channels/i;
+var hostOf = (url) => {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return void 0;
+  }
+};
+var isHostOrSubdomain = (host, expected) => host === expected || host?.endsWith(`.${expected}`) === true;
+var isJupyterKernelChannelsUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return ["ws:", "wss:"].includes(parsed.protocol) && KERNEL_CHANNELS_PATH_RE.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+};
+var identifyJupyterSaasPlatform = (_pageUrl, socketUrl) => {
+  const socketHost = hostOf(socketUrl);
+  if (socketHost?.endsWith(".prod.colab.dev") === true) {
+    return "google-colab";
+  }
+  const kaggleSocket = isHostOrSubdomain(socketHost, "kaggle.com") || isHostOrSubdomain(socketHost, "kaggleusercontent.com");
+  if (isJupyterKernelChannelsUrl(socketUrl) && kaggleSocket) {
+    return "kaggle-notebooks";
+  }
+  return "unknown";
+};
+var jupyterPlatformLabel = (platform) => {
+  if (platform === "google-colab") return "Google Colab";
+  if (platform === "kaggle-notebooks") return "Kaggle Notebooks";
+  return "Unknown Jupyter platform";
+};
+var jupyterRecogniserId = (platform) => {
+  if (platform === "google-colab") return "colab";
+  if (platform === "kaggle-notebooks") return "kaggle-notebooks";
+  return "jupyter-unknown";
+};
+
 // src/recognisers/colab.ts
-var COLAB_HOST_RE = /^https?:\/\/colab\.research\.google\.com/i;
 var NOTEBOOK_DOCUMENT_RE = /(\.ipynb|google\.colab|notebook|cell_type|kernelspec)/i;
 var NOTEBOOK_EDIT_RE = /(cell[_\s-]?edit|saveNotebook|insertCell|set_text|source"\s*:)/i;
 var NOTEBOOK_EXECUTION_RE = /(run all|execute(cell| code)?|kernel\.invokeFunction|runCell)/i;
@@ -1269,13 +1440,9 @@ var CLOUD_STORAGE_PATTERNS = [
   [/\bs3(?:\.amazonaws\.com)?\b/i, "s3"],
   [/\bazure\.blob\b|\bblob\.core\.windows\.net\b/i, "azure-blob"]
 ];
-var HTTP_METHOD_INTENT_RE = /\b(GET|POST|PUT|PATCH|DELETE)\b/;
+var HTTP_METHOD_INTENT_RE = /\b(GET|POST|PUT|PATCH|DELETE)\b/i;
 var BEARER_TOKEN_HINT_RE = /\bBearer\s+[A-Za-z0-9\-._~+/]+=*\b/i;
-var MAX_WS_FRAME_PARSE_CHARS = 256 * 1024;
 var MAX_AST_CODE_CHARS = 128 * 1024;
-var MAX_WS_PARSE_DEPTH = 5;
-var MAX_WS_PARSE_NODES = 80;
-var MAX_NESTED_JSON_STRING_CHARS = 128 * 1024;
 var collectCapabilities = (content) => {
   const hits = [];
   const addHits = (patterns) => {
@@ -1294,29 +1461,27 @@ var collectCapabilities = (content) => {
   }
   return Array.from(new Set(hits));
 };
-var finding = (title, description, confidence, tags) => ({
-  recogniserId: "colab",
+var finding = (title, description, confidence, tags, recogniserId = "colab") => ({
+  recogniserId,
   title,
   description,
   severity: confidence >= 0.8 ? "high" : confidence >= 0.65 ? "medium" : "low",
   confidence,
   tags
 });
-var isColabUrl = (url) => COLAB_HOST_RE.test(url);
-var KERNEL_CHANNELS_PATH_RE = /\/api\/kernels\/[^/]+\/channels/i;
+var isColabUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol) && parsed.hostname === "colab.research.google.com";
+  } catch {
+    return false;
+  }
+};
 var LSP_PATH_RE = /\/colab\/lsp/i;
 var isColabRuntimeSocketUrl = (url) => {
   try {
     const parsed = new URL(url);
     return parsed.protocol === "wss:" && /\.prod\.colab\.dev$/i.test(parsed.host);
-  } catch {
-    return false;
-  }
-};
-var isKernelChannelsSocketUrl = (url) => {
-  try {
-    const parsed = new URL(url);
-    return isColabRuntimeSocketUrl(url) && KERNEL_CHANNELS_PATH_RE.test(parsed.pathname);
   } catch {
     return false;
   }
@@ -1329,175 +1494,25 @@ var isLspSocketUrl = (url) => {
     return false;
   }
 };
-var toRecord = (value) => typeof value === "object" && value !== null ? value : void 0;
-var getString = (value, key) => {
-  const record = toRecord(value);
+var getString2 = (value, key) => {
+  const record = typeof value === "object" && value !== null ? value : void 0;
   const candidate = record?.[key];
   return typeof candidate === "string" ? candidate : void 0;
 };
-var parseJsonCandidate = (raw) => {
-  const trimmed = raw.trim();
-  if (trimmed.length > MAX_WS_FRAME_PARSE_CHARS) {
-    return { prefixed: false, failureReason: "frame-too-large" };
-  }
-  const safe = trimmed;
-  if (safe.length === 0) {
-    return { prefixed: false };
-  }
-  try {
-    return { value: JSON.parse(safe), prefixed: false };
-  } catch {
-    const firstJsonChar = safe.search(/[\[{]/);
-    if (firstJsonChar <= 0) {
-      return { prefixed: false, failureReason: "invalid-json" };
-    }
-    const candidate = safe.slice(firstJsonChar);
-    try {
-      return { value: JSON.parse(candidate), prefixed: true };
-    } catch {
-      return { prefixed: true, failureReason: "invalid-json" };
-    }
-  }
-};
-var asParseShape = (nestedOrWrapped, shape) => {
-  if (!nestedOrWrapped && shape.size === 0) {
-    return "direct";
-  }
-  const hasNested = shape.has("nested");
-  const hasArray = shape.has("array");
-  const hasStringified = shape.has("stringified");
-  const hasPrefixed = shape.has("prefixed");
-  if (hasNested && hasArray) {
-    return "nested+array";
-  }
-  if (hasNested && hasStringified) {
-    return "nested+stringified";
-  }
-  if (hasNested && hasPrefixed) {
-    return "nested+prefixed";
-  }
-  if (hasArray) {
-    return "array";
-  }
-  if (hasStringified) {
-    return "stringified";
-  }
-  if (hasPrefixed) {
-    return "prefixed";
-  }
-  if (hasNested) {
-    return "nested";
-  }
-  return "none";
-};
-var extractJupyterFrame = (sample) => {
-  const top = parseJsonCandidate(sample);
-  if (typeof top.value === "undefined") {
-    return {
-      failureReason: top.failureReason === "frame-too-large" ? "frame-too-large" : top.failureReason === "invalid-json" ? "invalid-json" : "unknown"
-    };
-  }
-  const queue = [
-    {
-      value: top.value,
-      depth: 0,
-      shape: new Set(top.prefixed ? ["prefixed"] : [])
-    }
-  ];
-  let visited = 0;
-  while (queue.length > 0 && visited < MAX_WS_PARSE_NODES) {
-    const node = queue.shift();
-    if (!node) {
-      break;
-    }
-    visited += 1;
-    if (node.depth > MAX_WS_PARSE_DEPTH) {
-      continue;
-    }
-    const asObject = toRecord(node.value);
-    if (asObject) {
-      const header = toRecord(asObject.header);
-      const messageType = getString(header, "msg_type") ?? getString(asObject, "method");
-      if (typeof messageType === "string") {
-        return {
-          frame: {
-            messageType,
-            content: toRecord(asObject.content),
-            parentHeader: toRecord(asObject.parent_header),
-            nestedOrWrapped: node.depth > 0 || node.shape.size > 0,
-            parseShape: asParseShape(node.depth > 0 || node.shape.size > 0, node.shape)
-          }
-        };
-      }
-      for (const value of Object.values(asObject)) {
-        if (typeof value === "string" && value.length <= MAX_NESTED_JSON_STRING_CHARS) {
-          const nested = parseJsonCandidate(value);
-          if (typeof nested.value !== "undefined") {
-            queue.push({
-              value: nested.value,
-              depth: node.depth + 1,
-              shape: /* @__PURE__ */ new Set([
-                ...node.shape,
-                "nested",
-                "stringified",
-                ...nested.prefixed ? ["prefixed"] : []
-              ])
-            });
-            continue;
-          }
-        }
-        if (typeof value === "object" && value !== null) {
-          queue.push({
-            value,
-            depth: node.depth + 1,
-            shape: /* @__PURE__ */ new Set([...node.shape, "nested"])
-          });
-        }
-      }
-    }
-    if (Array.isArray(node.value)) {
-      for (const item of node.value) {
-        queue.push({
-          value: item,
-          depth: node.depth + 1,
-          shape: /* @__PURE__ */ new Set([...node.shape, "array"])
-        });
-      }
-    }
-  }
-  return { failureReason: "unsupported-envelope" };
-};
-var buildProtocolObservation = (sample, frameType, extracted) => {
-  if (!sample) {
-    return void 0;
-  }
-  const topParse = parseJsonCandidate(sample);
-  const topAsRecord = toRecord(topParse.value);
-  const topLevelKeys = topAsRecord ? Object.keys(topAsRecord).slice(0, 20) : [];
-  const content = extracted?.content;
-  const codeValue = content?.code;
-  const codeLength = typeof codeValue === "string" ? codeValue.length : typeof codeValue === "number" || typeof codeValue === "boolean" ? String(codeValue).length : 0;
-  return {
-    topLevelKeys,
-    headerMsgType: extracted?.messageType,
-    parentHeaderMsgIdPresent: typeof extracted?.parentHeader?.msg_id === "string",
-    contentKeys: content ? Object.keys(content).slice(0, 20) : [],
-    contentCodeExists: typeof content !== "undefined" && Object.prototype.hasOwnProperty.call(content, "code"),
-    codeType: typeof codeValue === "undefined" ? "undefined" : Array.isArray(codeValue) ? "array" : typeof codeValue,
-    codeLength,
-    frameEncoding: frameType,
-    nestedOrWrapped: extracted?.nestedOrWrapped ?? false,
-    parseShape: extracted?.parseShape ?? (topParse.prefixed ? "prefixed" : topLevelKeys.length > 0 ? "direct" : "none")
-  };
-};
-var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.research.google.com", frameType = "unknown") => {
+var recogniseJupyterSaasWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.research.google.com", frameType = "unknown") => {
   const findings = [];
-  const isRuntimeSocket = isColabRuntimeSocketUrl(socketUrl);
-  const isKernelSocket = isKernelChannelsSocketUrl(socketUrl);
-  const isLspSocketMessage = isLspSocketUrl(socketUrl);
+  const executionPlatform = identifyJupyterSaasPlatform(pageUrl, socketUrl);
+  const isColabRuntimeSocket = isColabRuntimeSocketUrl(socketUrl);
+  const isKernelSocket = isJupyterKernelChannelsUrl(socketUrl);
+  const isLspSocketMessage = executionPlatform === "google-colab" && isLspSocketUrl(socketUrl);
+  const isRuntimeSocket = executionPlatform !== "unknown" && (isKernelSocket || isLspSocketMessage);
+  const platformLabel = jupyterPlatformLabel(executionPlatform);
+  const recogniserId = jupyterRecogniserId(executionPlatform);
   if (!isRuntimeSocket || !sample) {
     return {
-      isColabRuntimeSocket: isRuntimeSocket,
+      executionPlatform,
+      isRecognisedRuntimeSocket: isRuntimeSocket,
+      isColabRuntimeSocket,
       isKernelChannelsSocket: isKernelSocket,
       isLspSocket: isLspSocketMessage,
       executeRequestObserved: false,
@@ -1512,12 +1527,12 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
       jupyterEnvelopeParsed: false
     };
   }
-  const extractedResult = extractJupyterFrame(sample);
+  const extractedResult = parseJupyterFrame(sample, frameType);
   const extracted = extractedResult.frame;
-  const protocolObservation = buildProtocolObservation(sample, frameType, extracted);
+  const protocolObservation = extractedResult.observation;
   const messageType = extracted?.messageType;
   const maybeCode = extracted?.content?.code;
-  const executionState = getString(extracted?.content, "execution_state");
+  const executionState = getString2(extracted?.content, "execution_state");
   const code = typeof maybeCode === "string" ? maybeCode : "";
   const executeRequestObserved = messageType === "execute_request";
   const executeRequestHasCode = executeRequestObserved && code.trim().length > 0;
@@ -1525,10 +1540,11 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
   if (isKernelSocket) {
     findings.push(
       finding(
-        "Colab kernel WebSocket observed",
-        "A Colab Jupyter kernel channels WebSocket was observed.",
+        `${platformLabel} kernel WebSocket observed`,
+        `A ${platformLabel} Jupyter kernel channels WebSocket was observed.`,
         0.9,
-        ["colab", "websocket", "jupyter"]
+        [recogniserId, "websocket", "jupyter"],
+        recogniserId
       )
     );
   }
@@ -1538,7 +1554,8 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
         "Jupyter execute_request observed",
         "An outbound Jupyter execute_request message was observed on the kernel channel.",
         executeRequestHasCode ? 0.95 : 0.7,
-        ["jupyter", "execute_request"]
+        ["jupyter", "execute_request"],
+        recogniserId
       )
     );
   }
@@ -1557,7 +1574,9 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
     const parseFailureReason = extractedResult.failureReason;
     const codeFailureReason = executeRequestObserved && !Object.prototype.hasOwnProperty.call(extracted?.content ?? {}, "code") ? "code-missing" : executeRequestObserved && typeof maybeCode !== "string" ? "code-not-string" : void 0;
     return {
-      isColabRuntimeSocket: isRuntimeSocket,
+      executionPlatform,
+      isRecognisedRuntimeSocket: isRuntimeSocket,
+      isColabRuntimeSocket,
       isKernelChannelsSocket: isKernelSocket,
       isLspSocket: isLspSocketMessage,
       messageType,
@@ -1568,7 +1587,7 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
       findings,
       detectedCapabilities: [],
       trustBoundaryCrossings: [],
-      trigger: notebookContentSignal ? "lsp-notebook-edit" : "colab-websocket-observation",
+      trigger: notebookContentSignal ? "lsp-notebook-edit" : "jupyter-websocket-observation",
       confidence: notebookContentSignal ? 0.75 : executeRequestObserved ? 0.7 : 0.55,
       protocolObservation,
       jupyterEnvelopeParsed: Boolean(extracted),
@@ -1577,7 +1596,9 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
   }
   if (code.length > MAX_AST_CODE_CHARS) {
     return {
-      isColabRuntimeSocket: isRuntimeSocket,
+      executionPlatform,
+      isRecognisedRuntimeSocket: isRuntimeSocket,
+      isColabRuntimeSocket,
       isKernelChannelsSocket: isKernelSocket,
       isLspSocket: isLspSocketMessage,
       messageType,
@@ -1597,7 +1618,7 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
       parseFailureReason: "analysis-size-limit"
     };
   }
-  const semantic = recogniseColabSignals(isColabUrl(pageUrl) ? pageUrl : "https://colab.research.google.com", code);
+  const semantic = recogniseColabSignals(pageUrl, code);
   const hasEgressPotential2 = semantic.signals.networkingCode;
   const trustBoundaryCrossings = [
     "browser->saas-control-plane",
@@ -1606,7 +1627,9 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
   ];
   const codeHash = redactValue("source-code", code).hash;
   return {
-    isColabRuntimeSocket: isRuntimeSocket,
+    executionPlatform,
+    isRecognisedRuntimeSocket: isRuntimeSocket,
+    isColabRuntimeSocket,
     isKernelChannelsSocket: isKernelSocket,
     isLspSocket: isLspSocketMessage,
     messageType,
@@ -1614,7 +1637,7 @@ var recogniseColabWebSocketFrame = (socketUrl, sample, pageUrl = "https://colab.
     executeRequestHasCode: true,
     kernelResetSignal,
     notebookContentSignal,
-    findings: [...findings, ...semantic.findings],
+    findings: [...findings, ...executionPlatform === "google-colab" ? semantic.findings : []],
     detectedCapabilities: semantic.detectedCapabilities,
     trustBoundaryCrossings,
     trigger: "jupyter-execute-request",
@@ -2000,7 +2023,7 @@ var applyWebSocketSemanticToTabState = (state, semantic, observedAt, frameType, 
     totalWebSocketFramesObserved: state.totalWebSocketFramesObserved + 1,
     textWebSocketFramesObserved: state.textWebSocketFramesObserved + (frameType === "text" ? 1 : 0),
     binaryWebSocketFramesObserved: state.binaryWebSocketFramesObserved + (frameType === "arraybuffer" || frameType === "typed-array" ? 1 : 0),
-    recogniserState: semantic.isColabRuntimeSocket ? "active" : state.recogniserState,
+    recogniserState: semantic.isRecognisedRuntimeSocket ? "active" : state.recogniserState,
     updatedAt: observedAt,
     latestFrameByteLength: frameByteLength,
     latestDisplaySampleLength: displaySampleLength,
@@ -2041,7 +2064,7 @@ var ingestObservedMessage = (message, sender) => {
   const destination = parseDestination(message.payload.url, message.payload.pageUrl);
   const riskScore = computeDelegatedRiskScore(recogniser.signals);
   const timeline = buildTrustBoundaryTimeline(recogniser.signals);
-  const delegatedExecutionEvent = recogniser.isColab ? buildDelegatedExecutionEvent(recogniser.trigger, recogniser.confidence, recogniser.signals) : void 0;
+  const delegatedExecutionEvent = recogniser.isColab && recogniser.signals.notebookExecuted ? buildDelegatedExecutionEvent(recogniser.trigger, recogniser.confidence, recogniser.signals) : void 0;
   const event = buildObservedEvent({
     id: crypto.randomUUID(),
     eventSource: "page-world",
@@ -2089,7 +2112,7 @@ var ingestWebSocketFrameMessage = (message, sender) => {
   const observedAt = message.payload.timestamp;
   const destination = parseDestination(message.payload.socketUrl, message.payload.pageUrl);
   const semanticInput = message.payload.analysisFrameText;
-  const wsSemantic = recogniseColabWebSocketFrame(
+  const wsSemantic = recogniseJupyterSaasWebSocketFrame(
     message.payload.socketUrl,
     semanticInput,
     message.payload.pageUrl,
@@ -2133,10 +2156,12 @@ var ingestWebSocketFrameMessage = (message, sender) => {
   }
   const correlatedInputs = wsSemantic.executeRequestHasCode ? inferCorrelatedRiskInputs(semanticFromCode, invocation) : void 0;
   const riskScore = correlatedInputs ? computeDelegatedRiskScore(correlatedInputs) : void 0;
-  const timeline = correlatedInputs ? buildTrustBoundaryTimeline(correlatedInputs) : [];
+  const platformLabel = jupyterPlatformLabel(wsSemantic.executionPlatform);
+  const timeline = correlatedInputs ? buildTrustBoundaryTimeline(correlatedInputs, { platformLabel }) : [];
   const delegatedExecutionEvent = correlatedInputs ? buildDelegatedExecutionEvent("jupyter-execute-request", wsSemantic.confidence, correlatedInputs, {
     knownSymbolInvoked: invocation?.knownSymbolInvoked,
-    inheritedCapabilities: invocation?.inheritedCapabilities
+    inheritedCapabilities: invocation?.inheritedCapabilities,
+    executionPlatform: wsSemantic.executionPlatform
   }) : void 0;
   const riskFlags = [];
   if (wsSemantic.executeRequestHasCode && correlatedInputs) {
@@ -2180,7 +2205,7 @@ var ingestWebSocketFrameMessage = (message, sender) => {
         boundaryId: "browser-to-saas-control-plane",
         boundaryType: "saas-control-plane",
         direction: "out-of",
-        details: "Browser-observed WebSocket frame sent to Colab control plane."
+        details: `Browser-observed WebSocket frame sent to ${platformLabel} control plane.`
       },
       ...wsSemantic.executeRequestHasCode ? [
         {

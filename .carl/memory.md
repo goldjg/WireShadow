@@ -43,6 +43,7 @@ Chromium MV3 extension (WireShadow Lite) with safe metadata-only instrumentation
 - Resolution diagnostics should use explicit taxonomy (`definition-not-seen`, `session-mismatch`, `parser-failed`, `unsupported-call-shape`, `state-expired`, `state-reset`, etc.) and remain metadata-only.
 - Correlated semantic findings should carry explicit evidence levels: observed, correlated, inferred, unknown.
 - Generic semantic analysis (symbol capability mapping, argument provenance, call resolution) belongs in shared core layers; recognisers should keep only service-specific attribution and protocol quirks.
+- Bounded Jupyter envelope parsing belongs in shared core protocol analysis. SaaS attribution requires validated runtime host evidence: current explicit platforms are Google Colab and Kaggle Notebooks; lookalike and arbitrary Jupyter hosts remain unknown.
 - Semantic parsing must consume complete bounded WebSocket frame text before any display-sample truncation.
 - Display samples are telemetry-only; semantic analysis input and persistent storage remain redacted metadata only.
 - Generic function-definition extraction must support decorated/multiline `def` and `async def` signatures; otherwise function symbols can be missing while other semantic counters increase.
@@ -55,11 +56,13 @@ Chromium MV3 extension (WireShadow Lite) with safe metadata-only instrumentation
 - Canonical built extension directory is `dist/extension`, produced by typecheck + esbuild bundling plus static asset copy.
 - Build guard: bundling pipeline verifies `dist/extension/content-script.js` and `dist/extension/page-world.js` parse as classic scripts (no top-level module syntax).
 - MV3 popup pages also require external scripts under default CSP; popup runtime logic must be bundled into `panel/panel.js` and referenced from HTML, not inlined.
+- Browser/E2E validation is evidence-bearing: every asserted Playwright UI state must emit a retained screenshot under `docs/test-evidence/`, and test handoffs must include those paths alongside textual build/unit results.
 
-### First semantic recogniser (Google Colab)
+### Current semantic recognisers (Google Colab and Kaggle Notebooks)
 - Colab recogniser passively detects notebook document markers, notebook edit signals, cell-type indicators, and execution intent markers.
 - Semantic capability classification includes Python networking, external execution helpers, GitHub targets, cloud-storage targets, HTTP method intent, and embedded data/token-like markers.
 - The recogniser models SaaS control-plane to managed-runtime boundary crossing and potential hidden downstream egress risk.
+- Kaggle recognition consumes the shared bounded Jupyter protocol parser and attributes execution only on validated Kaggle/Kaggleusercontent kernel-channel hosts.
 
 ## Future
 CDP-powered WireShadow Pro assessment capabilities (documentation-only in bootstrap).

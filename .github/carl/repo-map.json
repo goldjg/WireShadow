@@ -1,7 +1,8 @@
 {
+  "schema_version": 1,
   "_note": "Repository map derived by `carl map`. Re-run to update after structural changes.",
   "generated_by": "carl map",
-  "last_updated": "2026-07-10",
+  "last_updated": "2026-09-12",
   "languages": [
     "JavaScript",
     "TypeScript"
@@ -17,6 +18,7 @@
     ".agents/rules": "",
     ".carl": "",
     ".carl/plans": "",
+    ".codex": "",
     ".cursor": "",
     ".cursor/rules": "",
     ".github": "GitHub configuration and Copilot instruction root",
@@ -30,14 +32,9 @@
     "dist": "",
     "dist/extension": "",
     "dist/extension/panel": "",
-    "dist/src": "",
-    "dist/src/core": "",
-    "dist/src/extension": "",
-    "dist/src/recognisers": "",
-    "dist/tests": "",
-    "dist/tests/fixtures": "",
     "docs": "Documentation",
     "docs/screenshots": "",
+    "docs/test-evidence": "",
     "scripts": "Build and automation scripts",
     "src": "",
     "src/core": "",
@@ -96,5 +93,1217 @@
       "path": "README.md",
       "purpose": "Repository overview and pack catalogue"
     }
-  ]
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "id": "component:.agents",
+        "kind": "component",
+        "path": ".agents",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at .agents."
+      },
+      {
+        "id": "component:.agents/rules",
+        "kind": "component",
+        "path": ".agents/rules",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at .agents/rules."
+      },
+      {
+        "id": "component:.carl",
+        "kind": "component",
+        "path": ".carl",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at .carl."
+      },
+      {
+        "id": "component:.carl/plans",
+        "kind": "component",
+        "path": ".carl/plans",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at .carl/plans."
+      },
+      {
+        "id": "component:.codex",
+        "kind": "component",
+        "path": ".codex",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at .codex."
+      },
+      {
+        "id": "component:.cursor",
+        "kind": "component",
+        "path": ".cursor",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at .cursor."
+      },
+      {
+        "id": "component:.cursor/rules",
+        "kind": "component",
+        "path": ".cursor/rules",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at .cursor/rules."
+      },
+      {
+        "id": "component:.github",
+        "kind": "component",
+        "path": ".github",
+        "purpose": "GitHub configuration and Copilot instruction root",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "GitHub configuration and Copilot instruction root"
+      },
+      {
+        "id": "component:.github/carl",
+        "kind": "component",
+        "path": ".github/carl",
+        "purpose": "cARLv2 governance artefacts and templates",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "cARLv2 governance artefacts and templates"
+      },
+      {
+        "id": "component:.github/carl/plans",
+        "kind": "component",
+        "path": ".github/carl/plans",
+        "purpose": "Prompt-as-code planning artefacts",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Prompt-as-code planning artefacts"
+      },
+      {
+        "id": "component:.github/instructions",
+        "kind": "component",
+        "path": ".github/instructions",
+        "purpose": "Copilot instruction packs",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Copilot instruction packs"
+      },
+      {
+        "id": "component:.github/instructions/cloud",
+        "kind": "component",
+        "path": ".github/instructions/cloud",
+        "purpose": "Cloud guidance packs",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Cloud guidance packs"
+      },
+      {
+        "id": "component:.github/instructions/core",
+        "kind": "component",
+        "path": ".github/instructions/core",
+        "purpose": "Core governance packs",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Core governance packs"
+      },
+      {
+        "id": "component:.github/instructions/languages",
+        "kind": "component",
+        "path": ".github/instructions/languages",
+        "purpose": "Language-specific guidance packs",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Language-specific guidance packs"
+      },
+      {
+        "id": "component:.github/instructions/platform",
+        "kind": "component",
+        "path": ".github/instructions/platform",
+        "purpose": "Platform guidance packs",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Platform guidance packs"
+      },
+      {
+        "id": "component:dist",
+        "kind": "component",
+        "path": "dist",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at dist."
+      },
+      {
+        "id": "component:dist/extension",
+        "kind": "component",
+        "path": "dist/extension",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at dist/extension."
+      },
+      {
+        "id": "component:dist/extension/panel",
+        "kind": "component",
+        "path": "dist/extension/panel",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at dist/extension/panel."
+      },
+      {
+        "id": "component:docs",
+        "kind": "component",
+        "path": "docs",
+        "purpose": "Documentation",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Documentation"
+      },
+      {
+        "id": "component:docs/screenshots",
+        "kind": "component",
+        "path": "docs/screenshots",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at docs/screenshots."
+      },
+      {
+        "id": "component:docs/test-evidence",
+        "kind": "component",
+        "path": "docs/test-evidence",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at docs/test-evidence."
+      },
+      {
+        "id": "component:scripts",
+        "kind": "component",
+        "path": "scripts",
+        "purpose": "Build and automation scripts",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Build and automation scripts"
+      },
+      {
+        "id": "component:src",
+        "kind": "component",
+        "path": "src",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at src."
+      },
+      {
+        "id": "component:src/core",
+        "kind": "component",
+        "path": "src/core",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at src/core."
+      },
+      {
+        "id": "component:src/extension",
+        "kind": "component",
+        "path": "src/extension",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at src/extension."
+      },
+      {
+        "id": "component:src/extension/panel",
+        "kind": "component",
+        "path": "src/extension/panel",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at src/extension/panel."
+      },
+      {
+        "id": "component:src/recognisers",
+        "kind": "component",
+        "path": "src/recognisers",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at src/recognisers."
+      },
+      {
+        "id": "component:tests",
+        "kind": "component",
+        "path": "tests",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at tests."
+      },
+      {
+        "id": "component:tests/fixtures",
+        "kind": "component",
+        "path": "tests/fixtures",
+        "criticality": "medium",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository component at tests/fixtures."
+      },
+      {
+        "id": "documentation:AGENTS.md",
+        "kind": "documentation",
+        "path": "AGENTS.md",
+        "criticality": "low",
+        "trust_boundary": "repository",
+        "policy_attachment_point": false,
+        "agent_context": "documentation artefact at AGENTS.md."
+      },
+      {
+        "id": "documentation:CLAUDE.md",
+        "kind": "documentation",
+        "path": "CLAUDE.md",
+        "criticality": "low",
+        "trust_boundary": "repository",
+        "policy_attachment_point": false,
+        "agent_context": "documentation artefact at CLAUDE.md."
+      },
+      {
+        "id": "documentation:README.md",
+        "kind": "documentation",
+        "path": "README.md",
+        "purpose": "Repository overview and pack catalogue",
+        "criticality": "low",
+        "trust_boundary": "repository",
+        "policy_attachment_point": false,
+        "agent_context": "Repository overview and pack catalogue"
+      },
+      {
+        "id": "entry_point:package.json",
+        "kind": "entry-point",
+        "path": "package.json",
+        "purpose": "Node.js project",
+        "criticality": "high",
+        "trust_boundary": "repository",
+        "policy_attachment_point": false,
+        "agent_context": "Node.js project"
+      },
+      {
+        "id": "governance:.github/carl/current-pr-contract.md",
+        "kind": "governance",
+        "path": ".github/carl/current-pr-contract.md",
+        "purpose": "Active PR scope and constraints",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "Active PR scope and constraints"
+      },
+      {
+        "id": "governance:.github/carl/current-pr-contract.template.md",
+        "kind": "governance",
+        "path": ".github/carl/current-pr-contract.template.md",
+        "purpose": "PR contract template",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "PR contract template"
+      },
+      {
+        "id": "governance:.github/carl/invariants.yml",
+        "kind": "governance",
+        "path": ".github/carl/invariants.yml",
+        "purpose": "Runtime invariants enforced by all implementation PRs",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "Runtime invariants enforced by all implementation PRs"
+      },
+      {
+        "id": "governance:.github/carl/memory.md",
+        "kind": "governance",
+        "path": ".github/carl/memory.md",
+        "purpose": "Durable architectural truth cache",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "Durable architectural truth cache"
+      },
+      {
+        "id": "governance:.github/carl/repo-map.example.json",
+        "kind": "governance",
+        "path": ".github/carl/repo-map.example.json",
+        "purpose": "Repo map template example",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "Repo map template example"
+      },
+      {
+        "id": "governance:.github/carl/repo-map.json",
+        "kind": "governance",
+        "path": ".github/carl/repo-map.json",
+        "purpose": "Generated cognitive repository map",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "Generated cognitive repository map"
+      },
+      {
+        "id": "governance:.github/carl/runtime.json",
+        "kind": "governance",
+        "path": ".github/carl/runtime.json",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "governance artefact at .github/carl/runtime.json."
+      },
+      {
+        "id": "governance:.github/carl/tool-policy.yml",
+        "kind": "governance",
+        "path": ".github/carl/tool-policy.yml",
+        "purpose": "Tool permission tier definitions",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "Tool permission tier definitions"
+      },
+      {
+        "id": "governance:.github/carl/trust-boundaries.md",
+        "kind": "governance",
+        "path": ".github/carl/trust-boundaries.md",
+        "purpose": "Trust boundary documentation",
+        "criticality": "high",
+        "trust_boundary": "governance",
+        "policy_attachment_point": false,
+        "agent_context": "Trust boundary documentation"
+      },
+      {
+        "id": "policy:cloud/azure",
+        "kind": "policy",
+        "path": ".github/instructions/cloud/azure.instructions.md",
+        "purpose": "Instruction pack cloud/azure",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:cloud/entra",
+        "kind": "policy",
+        "path": ".github/instructions/cloud/entra.instructions.md",
+        "purpose": "Instruction pack cloud/entra",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:cloud/gcp",
+        "kind": "policy",
+        "path": ".github/instructions/cloud/gcp.instructions.md",
+        "purpose": "Instruction pack cloud/gcp",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:cloud/microsoft-graph",
+        "kind": "policy",
+        "path": ".github/instructions/cloud/microsoft-graph.instructions.md",
+        "purpose": "Instruction pack cloud/microsoft-graph",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:cloud/netlify",
+        "kind": "policy",
+        "path": ".github/instructions/cloud/netlify.instructions.md",
+        "purpose": "Instruction pack cloud/netlify",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/baseline",
+        "kind": "policy",
+        "path": ".github/instructions/core/baseline.instructions.md",
+        "purpose": "Instruction pack core/baseline",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/carl",
+        "kind": "policy",
+        "path": ".github/instructions/core/carl.instructions.md",
+        "purpose": "Instruction pack core/carl",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/cognition-governance",
+        "kind": "policy",
+        "path": ".github/instructions/core/cognition-governance.instructions.md",
+        "purpose": "Instruction pack core/cognition-governance",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/dependency",
+        "kind": "policy",
+        "path": ".github/instructions/core/dependency.instructions.md",
+        "purpose": "Instruction pack core/dependency",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/identity",
+        "kind": "policy",
+        "path": ".github/instructions/core/identity.instructions.md",
+        "purpose": "Instruction pack core/identity",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/memory-cache",
+        "kind": "policy",
+        "path": ".github/instructions/core/memory-cache.instructions.md",
+        "purpose": "Instruction pack core/memory-cache",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/pr-contract",
+        "kind": "policy",
+        "path": ".github/instructions/core/pr-contract.instructions.md",
+        "purpose": "Instruction pack core/pr-contract",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/security",
+        "kind": "policy",
+        "path": ".github/instructions/core/security.instructions.md",
+        "purpose": "Instruction pack core/security",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:core/tool-permission-tiers",
+        "kind": "policy",
+        "path": ".github/instructions/core/tool-permission-tiers.instructions.md",
+        "purpose": "Instruction pack core/tool-permission-tiers",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:languages/go",
+        "kind": "policy",
+        "path": ".github/instructions/languages/go.instructions.md",
+        "purpose": "Instruction pack languages/go",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:languages/html",
+        "kind": "policy",
+        "path": ".github/instructions/languages/html.instructions.md",
+        "purpose": "Instruction pack languages/html",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:languages/javascript",
+        "kind": "policy",
+        "path": ".github/instructions/languages/javascript.instructions.md",
+        "purpose": "Instruction pack languages/javascript",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:languages/powershell",
+        "kind": "policy",
+        "path": ".github/instructions/languages/powershell.instructions.md",
+        "purpose": "Instruction pack languages/powershell",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:languages/python",
+        "kind": "policy",
+        "path": ".github/instructions/languages/python.instructions.md",
+        "purpose": "Instruction pack languages/python",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:languages/terraform",
+        "kind": "policy",
+        "path": ".github/instructions/languages/terraform.instructions.md",
+        "purpose": "Instruction pack languages/terraform",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:languages/typescript",
+        "kind": "policy",
+        "path": ".github/instructions/languages/typescript.instructions.md",
+        "purpose": "Instruction pack languages/typescript",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:platform/cicd",
+        "kind": "policy",
+        "path": ".github/instructions/platform/cicd.instructions.md",
+        "purpose": "Instruction pack platform/cicd",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:platform/docker",
+        "kind": "policy",
+        "path": ".github/instructions/platform/docker.instructions.md",
+        "purpose": "Instruction pack platform/docker",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "policy:platform/kubernetes",
+        "kind": "policy",
+        "path": ".github/instructions/platform/kubernetes.instructions.md",
+        "purpose": "Instruction pack platform/kubernetes",
+        "criticality": "high",
+        "trust_boundary": "policy",
+        "policy_attachment_point": false,
+        "agent_context": "Policy definition only; verify active policy evaluation with `carl trace`."
+      },
+      {
+        "id": "repository:.",
+        "kind": "repository",
+        "path": ".",
+        "purpose": "Repository root",
+        "criticality": "high",
+        "trust_boundary": "repository",
+        "policy_attachment_point": true,
+        "agent_context": "Repository orientation anchor; inspect connected components before changing cross-cutting behaviour."
+      }
+    ],
+    "edges": [
+      {
+        "from": "component:.agents",
+        "to": "component:.agents/rules",
+        "type": "contains",
+        "evidence": [
+          ".agents/rules"
+        ]
+      },
+      {
+        "from": "component:.carl",
+        "to": "component:.carl/plans",
+        "type": "contains",
+        "evidence": [
+          ".carl/plans"
+        ]
+      },
+      {
+        "from": "component:.cursor",
+        "to": "component:.cursor/rules",
+        "type": "contains",
+        "evidence": [
+          ".cursor/rules"
+        ]
+      },
+      {
+        "from": "component:.github",
+        "to": "component:.github/carl",
+        "type": "contains",
+        "evidence": [
+          ".github/carl"
+        ]
+      },
+      {
+        "from": "component:.github",
+        "to": "component:.github/instructions",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "component:.github/carl/plans",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/plans"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/current-pr-contract.md",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/current-pr-contract.md"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/current-pr-contract.template.md",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/current-pr-contract.template.md"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/invariants.yml",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/invariants.yml"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/memory.md",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/memory.md"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/repo-map.example.json",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/repo-map.example.json"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/repo-map.json",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/repo-map.json"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/runtime.json",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/runtime.json"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/tool-policy.yml",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/tool-policy.yml"
+        ]
+      },
+      {
+        "from": "component:.github/carl",
+        "to": "governance:.github/carl/trust-boundaries.md",
+        "type": "contains",
+        "evidence": [
+          ".github/carl/trust-boundaries.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions",
+        "to": "component:.github/instructions/cloud",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/cloud"
+        ]
+      },
+      {
+        "from": "component:.github/instructions",
+        "to": "component:.github/instructions/core",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core"
+        ]
+      },
+      {
+        "from": "component:.github/instructions",
+        "to": "component:.github/instructions/languages",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/languages"
+        ]
+      },
+      {
+        "from": "component:.github/instructions",
+        "to": "component:.github/instructions/platform",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/platform"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/cloud",
+        "to": "policy:cloud/azure",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/cloud/azure.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/cloud",
+        "to": "policy:cloud/entra",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/cloud/entra.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/cloud",
+        "to": "policy:cloud/gcp",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/cloud/gcp.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/cloud",
+        "to": "policy:cloud/microsoft-graph",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/cloud/microsoft-graph.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/cloud",
+        "to": "policy:cloud/netlify",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/cloud/netlify.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/baseline",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/baseline.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/carl",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/carl.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/cognition-governance",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/cognition-governance.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/dependency",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/dependency.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/identity",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/identity.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/memory-cache",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/memory-cache.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/pr-contract",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/pr-contract.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/security",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/security.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/core",
+        "to": "policy:core/tool-permission-tiers",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/core/tool-permission-tiers.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/languages",
+        "to": "policy:languages/go",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/languages/go.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/languages",
+        "to": "policy:languages/html",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/languages/html.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/languages",
+        "to": "policy:languages/javascript",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/languages/javascript.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/languages",
+        "to": "policy:languages/powershell",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/languages/powershell.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/languages",
+        "to": "policy:languages/python",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/languages/python.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/languages",
+        "to": "policy:languages/terraform",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/languages/terraform.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/languages",
+        "to": "policy:languages/typescript",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/languages/typescript.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/platform",
+        "to": "policy:platform/cicd",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/platform/cicd.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/platform",
+        "to": "policy:platform/docker",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/platform/docker.instructions.md"
+        ]
+      },
+      {
+        "from": "component:.github/instructions/platform",
+        "to": "policy:platform/kubernetes",
+        "type": "contains",
+        "evidence": [
+          ".github/instructions/platform/kubernetes.instructions.md"
+        ]
+      },
+      {
+        "from": "component:dist",
+        "to": "component:dist/extension",
+        "type": "contains",
+        "evidence": [
+          "dist/extension"
+        ]
+      },
+      {
+        "from": "component:dist/extension",
+        "to": "component:dist/extension/panel",
+        "type": "contains",
+        "evidence": [
+          "dist/extension/panel"
+        ]
+      },
+      {
+        "from": "component:docs",
+        "to": "component:docs/screenshots",
+        "type": "contains",
+        "evidence": [
+          "docs/screenshots"
+        ]
+      },
+      {
+        "from": "component:docs",
+        "to": "component:docs/test-evidence",
+        "type": "contains",
+        "evidence": [
+          "docs/test-evidence"
+        ]
+      },
+      {
+        "from": "component:src",
+        "to": "component:src/core",
+        "type": "contains",
+        "evidence": [
+          "src/core"
+        ]
+      },
+      {
+        "from": "component:src",
+        "to": "component:src/extension",
+        "type": "contains",
+        "evidence": [
+          "src/extension"
+        ]
+      },
+      {
+        "from": "component:src",
+        "to": "component:src/recognisers",
+        "type": "contains",
+        "evidence": [
+          "src/recognisers"
+        ]
+      },
+      {
+        "from": "component:src/extension",
+        "to": "component:src/extension/panel",
+        "type": "contains",
+        "evidence": [
+          "src/extension/panel"
+        ]
+      },
+      {
+        "from": "component:tests",
+        "to": "component:tests/fixtures",
+        "type": "contains",
+        "evidence": [
+          "tests/fixtures"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:.agents",
+        "type": "contains",
+        "evidence": [
+          ".agents"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:.carl",
+        "type": "contains",
+        "evidence": [
+          ".carl"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:.codex",
+        "type": "contains",
+        "evidence": [
+          ".codex"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:.cursor",
+        "type": "contains",
+        "evidence": [
+          ".cursor"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:.github",
+        "type": "contains",
+        "evidence": [
+          ".github"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:dist",
+        "type": "contains",
+        "evidence": [
+          "dist"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:docs",
+        "type": "contains",
+        "evidence": [
+          "docs"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:scripts",
+        "type": "contains",
+        "evidence": [
+          "scripts"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:src",
+        "type": "contains",
+        "evidence": [
+          "src"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "component:tests",
+        "type": "contains",
+        "evidence": [
+          "tests"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "documentation:AGENTS.md",
+        "type": "contains",
+        "evidence": [
+          "AGENTS.md"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "documentation:CLAUDE.md",
+        "type": "contains",
+        "evidence": [
+          "CLAUDE.md"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "documentation:README.md",
+        "type": "contains",
+        "evidence": [
+          "README.md"
+        ]
+      },
+      {
+        "from": "repository:.",
+        "to": "entry_point:package.json",
+        "type": "contains",
+        "evidence": [
+          "package.json"
+        ]
+      }
+    ],
+    "coverage": {
+      "ownership": {
+        "status": "unavailable",
+        "detail": "Ownership is not inferred. No owner is reported without a supported authoritative ownership source."
+      },
+      "dependencies": {
+        "status": "partial",
+        "detail": "Repository-local Go import declarations are derived statically; dependencies in other languages and dynamic dependencies are not inferred."
+      },
+      "data_flows": {
+        "status": "unavailable",
+        "detail": "Static imports do not prove runtime data flow, so runtime flows are not inferred."
+      },
+      "trust_boundaries": {
+        "status": "derived",
+        "detail": "Nodes are classified as repository, governance, policy, or automation surfaces from canonical repository-relative paths."
+      },
+      "criticality": {
+        "status": "derived",
+        "detail": "Criticality is a deterministic orientation heuristic based on node kind, not a risk assessment."
+      },
+      "policy_attachments": {
+        "status": "partial",
+        "detail": "Repository components are marked as policy attachment points and policy definitions are discoverable; active policy assignment remains the responsibility of `carl trace`."
+      },
+      "change_impact": {
+        "status": "partial",
+        "detail": "Change impact lists direct reverse repository-local Go import dependencies only; it is not transitive or a runtime impact guarantee."
+      }
+    }
+  }
 }

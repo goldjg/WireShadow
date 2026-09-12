@@ -101,7 +101,7 @@ export interface CausalRef {
     | "same-session";
 }
 
-export type DelegatedExecutionPlatform = "google-colab" | "unknown";
+export type DelegatedExecutionPlatform = "google-colab" | "kaggle-notebooks" | "unknown";
 
 export interface DelegatedExecutionEvent {
   executionPlatform: DelegatedExecutionPlatform;
