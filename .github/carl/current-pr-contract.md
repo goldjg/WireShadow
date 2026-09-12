@@ -2,7 +2,7 @@
 # Current PR Contract
 
 ## Goal
-Implement session-scoped semantic correlation for delegated execution so WireShadow can correlate non-empty Colab/Jupyter execute_request calls with previously observed symbol capabilities and argument provenance, then produce evidence-scoped risk and trust-boundary findings without storing raw notebook code.
+Implement session-scoped semantic correlation for delegated execution so WireShadow can correlate non-empty Jupyter `execute_request` calls on recognised SaaS notebook platforms with previously observed symbol capabilities and argument provenance, then produce platform-attributed, evidence-scoped risk and trust-boundary findings without storing raw notebook code.
 
 ## Contract status
 active
@@ -21,6 +21,8 @@ active
 
 ## Approved scope
 - Extend the existing passive extension pipeline with Colab semantic recogniser outputs.
+- Extract reusable bounded Jupyter protocol recognition into shared core logic.
+- Attribute recognised Jupyter execution to Google Colab or Kaggle from validated page/runtime URL evidence, with an explicit unknown fallback.
 - Fix deterministic page-world probe injection so external script removal never races async execution.
 - Add typed page-world readiness handshake and background-recorded instrumentation status.
 - Add popup diagnostic sensor state for instrumentation/bridge/observer/tab support/event counts.
@@ -37,10 +39,13 @@ active
 - Add deterministic additive risk scoring with explicit contributing factors.
 - Extend popup UI to show recogniser, timeline, score, capabilities, and trust-boundary crossings.
 - Add focused tests for recogniser behavior, delegated event generation, timeline generation, risk scoring, redaction safety, and integration.
+- Add Kaggle and unknown-Jupyter fixtures covering platform attribution and negative evidence gates.
+- Require retained Playwright screenshots for every browser/E2E validation state and include their repository paths in test handoff evidence.
 - Add session-scoped semantic state correlation across notebook executions (imports, function definitions, assignments, calls, argument provenance).
 - Add explicit evidence levels (observed/correlated/inferred/unknown) to semantic findings.
 - Correlate later symbol invocation with prior function capabilities and destination metadata.
 - Keep generic correlation logic in shared core semantic analysis; keep Colab recogniser platform-specific.
+- Keep generic Jupyter protocol parsing and execution evidence in shared core analysis; keep platform recognisers limited to attribution and platform-specific transport quirks.
 - Update README and required cARL mirror artefacts.
 
 ## Forbidden scope
@@ -79,6 +84,7 @@ active
 ## Tests / validation
 - `npm run build`
 - `npm test`
+- `WIRESHADOW_E2E=1 npm test` in the pinned ARM64 Playwright container, with screenshots written under `docs/test-evidence/`.
 - `carl harness sync`
 - `carl map`
 - `carl doctor`
@@ -106,15 +112,20 @@ active
 - Evidence model added for semantic reporting: observed, correlated, inferred, and unknown.
 - Correlated execution findings now include known symbol invoked, inherited capabilities, argument provenance, and explicit downstream activity status `unknown`.
 - Generic/shared logic extracted into core semantic layer (`python-semantic`) so service-specific recogniser logic remains platform attribution only.
+- Bounded Jupyter envelope parsing is now shared in `src/core/jupyter-protocol.ts`; platform recognisers no longer own protocol traversal.
+- Jupyter SaaS attribution now recognises validated Colab runtime hosts and Kaggle/Kaggleusercontent kernel-channel hosts. Unknown or lookalike hosts remain unattributed and are not parsed as delegated execution.
 - Build-system root cause: MV3 content scripts cannot execute unresolved ESM imports, and `tsc` emit left top-level imports in `content-script.js`, causing startup failure.
 - Build-system change: `npm run build` now runs `tsc --noEmit` and `scripts/build-extension.mjs` (esbuild), producing unpacked extension output in `dist/extension`.
 - Popup root cause: MV3 extension pages block inline JavaScript by default CSP, so popup logic embedded in `panel/index.html` did not execute.
 - Popup build change: popup logic moved to `src/extension/panel/panel.ts`, bundled to `dist/extension/panel/panel.js`, and loaded via external script reference.
 - Smoke-test evidence: Playwright extension smoke test runs against built output (`dist/extension`), checks bridge/page-ready status, triggers fetch, verifies event ingestion, and fails on page/console errors (opt-in `WIRESHADOW_E2E=1`).
 - Validation evidence in this session:
-  - `npm run build`: passed.
-  - `npm test`: blocked by local runtime mismatch (`node:util styleText` export missing in current Node runtime).
-  - `carl harness sync`, `carl map`, `carl doctor`: blocked because `carl` CLI is unavailable in the execution environment.
+  - ARM64 Node 22 `npm run build`: passed.
+  - ARM64 Node 22 `npm test`: passed (86 tests; 2 opt-in E2E tests skipped).
+  - ARM64 Playwright 1.61.1 E2E: passed (2 tests), with visually inspected screenshots at `docs/test-evidence/extension-smoke-fetch.png` and `docs/test-evidence/kaggle-delegated-execution.png`.
+  - `carl map`: passed and regenerated `.github/carl/repo-map.json`.
+  - `carl doctor`: completed with 0 errors and 13 existing-version drift warnings; broad `carl repair` was not run.
+  - `carl harness sync`: blocked by the read-only `.agents/rules/carl.md` mount. Its partial unrelated adapter upgrade was reverted, apart from a final-newline-only diff in `.github/copilot-instructions.md`.
 - Remaining Colab-specific limitation: live Colab browser validation and per-frame de-duplication tuning remain follow-on tasks; manual Colab revalidation was not executable in this environment.
 
 ## Stop conditions
@@ -125,7 +136,7 @@ active
 ## Escalation triggers
 - Need to add dependencies beyond the existing TypeScript + Vitest stack.
 - Need to alter harness authority semantics.
-- Need to broaden scope beyond Colab semantic recogniser + passive UI/reporting updates.
+- Need to broaden scope beyond passive Jupyter SaaS recognition (Colab + Kaggle) and the existing UI/reporting pipeline.
 
 ## Context reset notes
 After completion, close or supersede this contract in the next PR cycle.

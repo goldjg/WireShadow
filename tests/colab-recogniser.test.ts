@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { isColabUrl, recogniseColabWebSocketFrame, recogniseColabSignals } from "../src/recognisers/colab.js";
+import {
+  isColabUrl,
+  recogniseColabWebSocketFrame,
+  recogniseColabSignals,
+  recogniseJupyterSaasWebSocketFrame
+} from "../src/recognisers/colab.js";
+import {
+  identifyJupyterSaasPlatform,
+  isJupyterKernelChannelsUrl
+} from "../src/recognisers/jupyter-saas.js";
 import {
   COLAB_KERNEL_SOCKET_URL,
   COLAB_LSP_SOCKET_URL,
+  KAGGLE_KERNEL_SOCKET_URL,
   JUPYTER_EXECUTE_REQUEST_ARRAY_WRAPPED,
   JUPYTER_EXECUTE_REQUEST_EMPTY_CODE,
   JUPYTER_EXECUTE_REQUEST_NESTED,
@@ -20,6 +30,55 @@ describe("colab recogniser", () => {
   it("identifies Google Colab URLs", () => {
     expect(isColabUrl("https://colab.research.google.com/drive/abc")).toBe(true);
     expect(isColabUrl("https://example.com/not-colab")).toBe(false);
+    expect(isColabUrl("https://colab.research.google.com.evil.example/drive/abc")).toBe(false);
+  });
+
+  it("attributes only validated Jupyter SaaS host boundaries", () => {
+    expect(
+      identifyJupyterSaasPlatform("https://www.kaggle.com/code/example/notebook", KAGGLE_KERNEL_SOCKET_URL)
+    ).toBe("kaggle-notebooks");
+    expect(
+      identifyJupyterSaasPlatform(
+        "https://evil-kaggle.com/code/example/notebook",
+        "wss://evil-kaggle.com/api/kernels/id/channels"
+      )
+    ).toBe("unknown");
+    expect(
+      identifyJupyterSaasPlatform(
+        "https://www.kaggle.com/code/example/notebook",
+        "wss://notebooks.example.com/api/kernels/id/channels"
+      )
+    ).toBe("unknown");
+    expect(isJupyterKernelChannelsUrl(KAGGLE_KERNEL_SOCKET_URL)).toBe(true);
+    expect(isJupyterKernelChannelsUrl("https://www.kaggle.com/api/kernels/id/channels")).toBe(false);
+  });
+
+  it("attributes non-empty Kaggle Jupyter execution without labeling it Colab", () => {
+    const result = recogniseJupyterSaasWebSocketFrame(
+      KAGGLE_KERNEL_SOCKET_URL,
+      JUPYTER_EXECUTE_REQUEST_WITH_CODE,
+      "https://www.kaggle.com/code/example/notebook",
+      "text"
+    );
+    expect(result.executionPlatform).toBe("kaggle-notebooks");
+    expect(result.isRecognisedRuntimeSocket).toBe(true);
+    expect(result.isColabRuntimeSocket).toBe(false);
+    expect(result.executeRequestHasCode).toBe(true);
+    expect(result.findings.every((finding) => finding.recogniserId === "kaggle-notebooks")).toBe(true);
+    expect(result.detectedCapabilities).toContain("requests");
+  });
+
+  it("does not parse or infer execution for an unknown Jupyter-like deployment", () => {
+    const result = recogniseJupyterSaasWebSocketFrame(
+      "wss://notebooks.example.com/api/kernels/id/channels",
+      JUPYTER_EXECUTE_REQUEST_WITH_CODE,
+      "https://notebooks.example.com/workspace",
+      "text"
+    );
+    expect(result.executionPlatform).toBe("unknown");
+    expect(result.isRecognisedRuntimeSocket).toBe(false);
+    expect(result.executeRequestObserved).toBe(false);
+    expect(result.findings).toEqual([]);
   });
 
   it("identifies notebook and delegated execution semantics", () => {

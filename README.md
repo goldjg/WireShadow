@@ -8,6 +8,10 @@ WireShadow is a browser security and research tool focused on surfacing delegate
 
 Google Colab is a clear delegated-execution scenario: users author and run Python notebooks in-browser, but execution is delegated to Google-managed runtime infrastructure. Browser tooling shows the control-plane interaction with Colab, not the full downstream runtime network behavior.
 
+The same SPADE trust-boundary problem is not Colab-specific. WireShadow now
+recognises standards-based Jupyter execution on validated Google Colab and
+Kaggle runtime hosts, while keeping unknown deployments explicitly unattributed.
+
 ## Why browser network inspection is insufficient
 
 In SaaS notebook platforms (for example Google Colab), enterprise controls can observe trusted browser traffic to the platform while missing downstream runtime egress performed by remotely executed notebook code. WireShadow highlights the semantic chain:
@@ -23,7 +27,9 @@ WireShadow now includes a first Colab semantic recogniser that emits:
 - lightweight additive risk scoring with explicit factors
 - detected outbound capability classes (networking libraries, external execution helpers, GitHub/cloud targets)
 
-Colab execution intent is primarily recognised from outbound Jupyter WebSocket `execute_request` frames (kernel channels), while Colab LSP WebSocket messages are treated as notebook-content/edit signals only.
+Delegated execution intent is recognised from outbound Jupyter WebSocket
+`execute_request` frames on validated SaaS kernel channels. Colab LSP WebSocket
+messages remain notebook-content/edit signals only.
 
 WireShadow now also performs **session-scoped semantic correlation** because notebook meaning can be distributed across time (for example: function defined in one cell, invoked in a later cell). The semantic layer correlates:
 
@@ -109,7 +115,10 @@ WireShadow Lite can infer delegated egress potential from browser-observed proto
 
 Reusable logic (Python import/definition/assignment/call analysis, symbol capability mapping, argument provenance, correlation, evidence modeling) lives in shared core semantic layers.
 
-Service-specific recognisers (for example Colab) retain only platform attribution and protocol-specific transport quirks.
+Platform recognisers retain only validated host attribution and
+platform-specific transport quirks. Current explicit attributions are
+`google-colab` and `kaggle-notebooks`; arbitrary Jupyter-like hosts remain
+`unknown` and do not produce execution findings.
 
 ## Lite vs Pro
 
@@ -124,7 +133,7 @@ Chromium MV3 extension with metadata-only observation pipeline:
 - popup semantic view for recogniser, timeline, score, capabilities, trust-boundary crossings, latest execution, and latest egress-indicating execution
 - additive payload classification (no raw payload retention)
 - safe redaction evidence (category, length, SHA-256 hash, limited safe evidence)
-- Google Colab SPADE recogniser findings
+- Google Colab and Kaggle Jupyter SPADE recogniser findings
 
 ### WireShadow Pro (future, documented only)
 
@@ -181,6 +190,18 @@ This view demonstrates the intended operator-facing explanation path:
 - timeline steps that explain browser intent vs delegated runtime risk
 - explicit score factors used to keep the output deterministic and reviewable
 
+### Browser test evidence
+
+Playwright E2E runs retain screenshots for every asserted panel state:
+
+- [instrumentation/fetch smoke state](./docs/test-evidence/extension-smoke-fetch.png)
+- [Kaggle delegated-execution state](./docs/test-evidence/kaggle-delegated-execution.png)
+
+The Kaggle fixture uses a local WebSocket server mapped to a validated Kaggle
+host. It proves browser-to-extension observation, platform attribution,
+redaction, and hidden-egress risk semantics; it does not claim provider-side
+egress was directly observed.
+
 ## Current limitations
 
 - in-memory storage only (no persistence/export)
@@ -188,6 +209,7 @@ This view demonstrates the intended operator-facing explanation path:
 - no filtering/search in UI yet
 - classification is pattern-based and intentionally lightweight
 - no CDP runtime capture in Lite mode
+- SaaS host/protocol mappings can change and require field revalidation
 
 ## Roadmap (next increments)
 
@@ -208,12 +230,26 @@ npm test
 
 `npm run build` now performs TypeScript type-checking (`--noEmit`) and bundles extension runtime entry points via esbuild into a self-contained unpacked extension at `dist/extension`.
 
-Browser-level extension pipeline integration test (optional, requires local browser runtime support):
+Browser-level extension pipeline integration test (required for browser-facing changes):
 
 ```powershell
 $env:WIRESHADOW_E2E=1
 npm test
 ```
+
+Canonical ARM64 container run (Docker requires `sudo` on the tested host):
+
+```bash
+sudo docker run --rm --platform linux/arm64 --user 1000:1000 \
+  -e HOME=/tmp/wireshadow-playwright-home -e WIRESHADOW_E2E=1 \
+  -v "$PWD:/work" -w /work \
+  mcr.microsoft.com/playwright:v1.61.1-noble \
+  sh -lc 'mkdir -p /tmp/wireshadow-playwright-home && xvfb-run -a npm test'
+```
+
+The Playwright image version must match the version resolved in
+`package-lock.json`. Successful E2E handoff includes the retained files under
+`docs/test-evidence/`.
 
 ## Load unpacked extension (developer mode)
 

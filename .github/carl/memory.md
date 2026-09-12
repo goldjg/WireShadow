@@ -77,6 +77,7 @@ WireShadow originated from SPADE research (**Side-channel Platform Abuse and Dat
 - Resolution diagnostics should use explicit taxonomy (`definition-not-seen`, `session-mismatch`, `parser-failed`, `unsupported-call-shape`, `state-expired`, `state-reset`, etc.) and remain redacted metadata-only.
 - Correlated semantic findings should carry explicit evidence levels: observed, correlated, inferred, unknown.
 - Generic semantic analysis (symbol capability mapping, argument provenance, call resolution) belongs in shared core layers; recognisers should keep only service-specific attribution and protocol quirks.
+- Bounded Jupyter envelope parsing belongs in shared core protocol analysis. SaaS attribution must require validated runtime host evidence: current explicit platforms are Google Colab and Kaggle Notebooks; lookalike and arbitrary Jupyter hosts remain unknown and produce no delegated-execution finding.
 - Semantic parsing must use complete bounded WebSocket frame text first, then derive a separate truncated display sample; display truncation must never be the semantic-analysis source.
 - Safe semantic diagnostics should track parse/extraction/analysis counters and bounded failure reasons without storing raw frame/code content.
 - Generic function-definition extraction must handle decorated and multiline signatures (including async) or semantic state will show assignments/calls without persisted functions.
@@ -86,10 +87,12 @@ WireShadow originated from SPADE research (**Side-channel Platform Abuse and Dat
 - Canonical unpacked extension output directory is `dist/extension`, built via `tsc --noEmit` + esbuild bundling + static asset copy.
 - Build pipeline verifies `dist/extension/content-script.js` and `dist/extension/page-world.js` parse as classic scripts to prevent module-syntax regressions.
 - MV3 popup pages run under CSP that blocks inline JavaScript; popup runtime logic must be externalized and bundled as `panel/panel.js`.
+- Browser/E2E validation is evidence-bearing: every asserted Playwright UI state must emit a retained screenshot under `docs/test-evidence/`, and test handoffs must include the screenshot paths alongside textual build/unit results.
 
 ## Canonical validation commands
 - `npm run build`
 - `npm test`
+- `WIRESHADOW_E2E=1 npm test` in the pinned ARM64 Playwright container (required screenshot evidence under `docs/test-evidence/`)
 - `carl harness sync`
 - `carl map`
 - `carl doctor`

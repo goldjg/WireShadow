@@ -34,6 +34,15 @@ describe("semantic timeline and scoring", () => {
     expect(event.outboundCapabilityDetected).toBe(true);
   });
 
+  it("carries explicit Kaggle platform attribution through event and timeline", () => {
+    const event = buildDelegatedExecutionEvent("jupyter-execute-request", 0.95, inputs, {
+      executionPlatform: "kaggle-notebooks"
+    });
+    const timeline = buildTrustBoundaryTimeline(inputs, { platformLabel: "Kaggle Notebooks" });
+    expect(event.executionPlatform).toBe("kaggle-notebooks");
+    expect(timeline.some((entry) => entry.details.includes("Kaggle Notebooks control-plane"))).toBe(true);
+  });
+
   it("marks outbound capability when correlated egress evidence exists without generic networking signal", () => {
     const event = buildDelegatedExecutionEvent("jupyter-execute-request", 0.9, {
       notebookEdited: false,

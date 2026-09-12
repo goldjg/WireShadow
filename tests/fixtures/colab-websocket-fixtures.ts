@@ -1,6 +1,8 @@
 export const COLAB_KERNEL_SOCKET_URL =
   "wss://runtime-sanitized.prod.colab.dev/api/kernels/sanitized-kernel/channels";
 export const COLAB_LSP_SOCKET_URL = "wss://runtime-sanitized.prod.colab.dev/colab/lsp";
+export const KAGGLE_KERNEL_SOCKET_URL =
+  "wss://notebook-sanitized.kaggleusercontent.com/api/kernels/sanitized-kernel/channels";
 
 export const JUPYTER_EXECUTE_REQUEST_WITH_CODE = JSON.stringify({
   header: { msg_id: "sanitized", msg_type: "execute_request" },

@@ -1,7 +1,7 @@
 # WireShadow Colab Semantic Recogniser PR Contract
 
 ## Goal
-Implement session-scoped semantic correlation for delegated execution so WireShadow can correlate non-empty Colab/Jupyter execute_request calls with previously observed symbol capabilities and argument provenance, then produce evidence-scoped risk and trust-boundary findings without storing raw notebook code.
+Implement session-scoped semantic correlation for delegated execution so WireShadow can correlate non-empty Jupyter `execute_request` calls on recognised SaaS notebook platforms with previously observed symbol capabilities and argument provenance, then produce platform-attributed, evidence-scoped risk and trust-boundary findings without storing raw notebook code.
 
 ## Contract status
 active
@@ -15,6 +15,8 @@ active
 
 ## Approved scope
 - Preserve the existing passive instrumentation pipeline and extend it with Colab semantic analysis.
+- Extract reusable bounded Jupyter protocol recognition into shared core logic.
+- Attribute recognised Jupyter execution to Google Colab or Kaggle from validated page/runtime URL evidence, with an explicit unknown fallback.
 - Fix deterministic page-world injection timing and guard against duplicate injection.
 - Add typed page-ready/runtime status handshake so instrumentation health is observable.
 - Add popup diagnostics for instrumentation status, bridge state, event count, and tab support.
@@ -31,10 +33,13 @@ active
 - Add lightweight additive risk scoring with explicit contributing factors.
 - Extend popup to display recogniser, timeline, score, detected capabilities, and trust-boundary crossings.
 - Add focused tests for recogniser behavior, timeline/scoring, delegated execution event generation, redaction guarantees, and integration.
+- Add Kaggle and unknown-Jupyter fixtures covering platform attribution and negative evidence gates.
+- Require retained Playwright screenshots for every browser/E2E validation state and include their repository paths in test handoff evidence.
 - Add session-scoped semantic state correlation across notebook executions (imports, function definitions, assignments, calls, argument provenance).
 - Add explicit evidence levels (observed/correlated/inferred/unknown) to semantic findings.
 - Correlate later symbol invocation with prior function capabilities and destination metadata.
 - Keep generic correlation logic in shared core semantic analysis; keep Colab recogniser platform-specific.
+- Keep generic Jupyter protocol parsing and execution evidence in shared core analysis; keep platform recognisers limited to attribution and platform-specific transport quirks.
 - Update README and required cARL mirrors (`.carl/current-pr-contract.md`, `.carl/repo-map.json`, `.carl/memory.md`).
 
 ## Forbidden scope
@@ -76,6 +81,7 @@ active
 ## Validation commands
 - `npm test`
 - `npm run build`
+- `WIRESHADOW_E2E=1 npm test` in the pinned ARM64 Playwright container, with screenshots written under `docs/test-evidence/`.
 - `carl harness sync`
 - `carl map`
 - `carl doctor`
@@ -102,12 +108,15 @@ active
 - Evidence model added for semantic reporting: observed, correlated, inferred, and unknown.
 - Correlated execution findings now include known symbol invoked, inherited capabilities, argument provenance, and explicit downstream activity status `unknown`.
 - Generic/shared logic extracted into core semantic layer (`python-semantic`) so service-specific recogniser logic remains platform attribution only.
+- Bounded Jupyter envelope parsing is shared in `src/core/jupyter-protocol.ts`; platform recognisers no longer own protocol traversal.
+- Jupyter SaaS attribution recognises validated Colab runtime hosts and Kaggle/Kaggleusercontent kernel-channel hosts. Unknown or lookalike hosts remain unattributed and are not parsed as delegated execution.
 - Build-system root cause: MV3 content scripts cannot execute unresolved ESM imports, and `tsc` emit left top-level `import` statements in `content-script.js`, causing extension startup failure.
 - Build-system change: `npm run build` now runs `tsc --noEmit` + esbuild bundling (`scripts/build-extension.mjs`) and emits unpacked extension runtime to `dist/extension`.
 - Popup root cause: MV3 extension pages block inline JavaScript by default CSP, so popup logic embedded in `panel/index.html` did not execute.
 - Popup build change: popup logic moved to `src/extension/panel/panel.ts`, bundled to `dist/extension/panel/panel.js`, and loaded via external `<script src="./panel.js"></script>`.
 - Smoke-test evidence: built-output Playwright extension smoke test updated to use `dist/extension`, validate bridge readiness handshake, trigger fetch, and verify background store ingestion while failing on page/console errors (opt-in via `WIRESHADOW_E2E=1`).
-- Validation evidence: `npm run build` passed in-session; `npm test` remains blocked by local Node/Vitest runtime mismatch (`node:util styleText` export); `carl` commands remain blocked because `carl` CLI is unavailable here.
+- Validation evidence: ARM64 Node 22 `npm run build` passed; ARM64 Node 22 `npm test` passed (86 tests, 2 opt-in E2E skipped); ARM64 Playwright 1.61.1 E2E passed (2 tests) with visually inspected screenshots under `docs/test-evidence/`.
+- cARL validation: `carl map` passed; `carl doctor` completed with 0 errors and 13 existing-version drift warnings; `carl harness sync` was blocked by the read-only `.agents/rules/carl.md` mount and its partial unrelated adapter upgrade was reverted (leaving only a final-newline diff in `.github/copilot-instructions.md`).
 - Manual Colab validation status: not executed in this environment (requires local interactive browser session with extension reload).
 - Function-model drop root cause: in `background.ts`, `knownFunctionsCount`, `knownVariablesCount`, `knownSymbolsCount`, `latestFunctionDefined`, and `latestFunctionInvoked` were updated unconditionally on every WebSocket frame using `semanticExecution?.diagnostics... ?? 0`. Non-execution frames (heartbeats, kernel-status, LSP signals) have `semanticExecution = undefined`, causing these fields to reset to 0/undefined on every background frame arriving after a definition cell. This explained: FunctionDef nodes found: 3, Known functions: 0.
 - Function-model drop fix: all five fields now update only inside the `if (semanticExecution)` guard; non-execution frames leave state unchanged.

@@ -36,7 +36,7 @@ const PYGITHUB_RE = /\bPyGithub\b/i;
 const CLOUD_STORAGE_RE =
   /\b(?:drive\.google\.com|google drive|dropbox|onedrive|s3(?:\.amazonaws\.com)?|blob\.core\.windows\.net|azure\.blob)\b/i;
 const HTTP_METHOD_RE = /\b(?:GET|POST|PUT|PATCH|DELETE)\b/;
-const NOTEBOOK_METADATA_RE = /\b(?:metadata|kernelspec|language_info|google\.colab)\b/i;
+const NOTEBOOK_METADATA_RE = /\b(?:metadata|kernelspec|language_info|notebook[_-]?id|google\.colab)\b/i;
 const TRANSPORT_METADATA_KEY_RE =
   /\b(?:runtime|session|kernel|notebook|proxy|transport|channel)[_-]?(?:id|token|host|name)?\b/i;
 const COLAB_RUNTIME_HOST_RE = /\.prod\.colab\.dev$/i;
@@ -53,7 +53,7 @@ const looksLikeRuntimeTransportMetadata = (token: string, input: string): boolea
 
   const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const tokenContextRe = new RegExp(
-    `(?:${TRANSPORT_METADATA_KEY_RE.source})\\s*[:=]\\s*["']?${escaped}["']?`,
+    `(?:${TRANSPORT_METADATA_KEY_RE.source})["']?\\s*[:=]\\s*["']?${escaped}["']?`,
     "i"
   );
   if (tokenContextRe.test(input)) {
